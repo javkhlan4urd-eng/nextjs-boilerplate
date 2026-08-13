@@ -89,6 +89,8 @@ export default function LoginPage() {
               <label className="block text-sm font-medium text-slate-700">Багшийн нэр</label>
               <input
                 required
+                name="name"
+                autoComplete="name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -101,6 +103,8 @@ export default function LoginPage() {
             <input
               required
               type="email"
+              name="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -112,6 +116,8 @@ export default function LoginPage() {
             <input
               required
               type="password"
+              name="password"
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
