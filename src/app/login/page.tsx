@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     if (mode === "forgot") {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/auth/confirm?next=/reset-password`,
       });
       if (error) {
         setError("Илгээхэд алдаа гарлаа: " + error.message);
