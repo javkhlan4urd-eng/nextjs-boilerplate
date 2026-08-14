@@ -70,7 +70,7 @@ export default function ResetPasswordPage() {
     setNotice("Нууц үг амжилттай шинэчлэгдлээ. Нэвтрэх хуудас руу шилжиж байна...");
     setLoading(false);
     setTimeout(() => {
-      router.push("/groups");
+      router.push("/");
       router.refresh();
     }, 1500);
   }

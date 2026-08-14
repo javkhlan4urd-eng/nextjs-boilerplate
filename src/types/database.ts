@@ -62,6 +62,27 @@ export interface ObservationMedia {
   created_at: string;
 }
 
+export interface FitnessTest {
+  id: string;
+  child_id: string;
+  teacher_id: string;
+  tested_on: string;
+  age_group: 3 | 4 | 5;
+  gender: Gender;
+  speed_sec: number | null;
+  speed_score: 1 | 2 | 3 | null;
+  strength_value: number | null;
+  strength_score: 1 | 2 | 3 | null;
+  agility_value: number | null;
+  agility_score: 1 | 2 | 3 | null;
+  balance_sec: number | null;
+  balance_score: 1 | 2 | 3 | null;
+  total_score: number | null;
+  level: string | null;
+  note: string | null;
+  created_at: string;
+}
+
 export const LEVEL_LABELS: Record<number, string> = {
   1: "Эхэлж байгаа",
   2: "Хөгжиж байгаа",

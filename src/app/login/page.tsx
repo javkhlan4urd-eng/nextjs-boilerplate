@@ -45,7 +45,7 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      router.push("/groups");
+      router.push("/");
       router.refresh();
     } else {
       const { error } = await supabase.auth.signUp({
