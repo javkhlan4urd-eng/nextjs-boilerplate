@@ -34,6 +34,7 @@ export default function ObservationForm({
   const [obsId] = useState(() => crypto.randomUUID());
   const [level, setLevel] = useState<number | null>(null);
   const [media, setMedia] = useState<UploadedFile[]>([]);
+  const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -142,7 +143,9 @@ export default function ObservationForm({
         <textarea
           name="note"
           rows={3}
-          placeholder="Юу ажигласнаа энд бичнэ үү..."
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Юу ажигласнаа энд бичнэ үү (эсвэл зураг хавсаргаад AI-аар автоматаар бичүүлнэ үү)..."
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
       </div>
@@ -151,12 +154,16 @@ export default function ObservationForm({
         <label className="block text-xs font-medium text-slate-500">
           Зураг / бичлэг хавсаргах
         </label>
+        <p className="mt-0.5 text-xs text-slate-400">
+          Зураг хавсаргавал AI автоматаар ажиглалтын тэмдэглэл санал болгоно (шаардвал засаж болно).
+        </p>
         <div className="mt-1">
           <PhotoCapture
             bucket="observation-media"
             folder={`observations/${obsId}`}
             multiple
             onChange={setMedia}
+            onAnalyzed={(suggested) => setNote((prev) => (prev.trim() ? prev : suggested))}
           />
         </div>
       </div>

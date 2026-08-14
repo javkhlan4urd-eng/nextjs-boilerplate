@@ -14,15 +14,18 @@ export default function PhotoCapture({
   multiple = false,
   initial = [],
   onChange,
+  onAnalyzed,
 }: {
   bucket: string;
   folder: string;
   multiple?: boolean;
   initial?: UploadedFile[];
   onChange: (files: UploadedFile[]) => void;
+  onAnalyzed?: (note: string) => void;
 }) {
   const [files, setFiles] = useState<UploadedFile[]>(initial);
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
@@ -64,6 +67,26 @@ export default function PhotoCapture({
     setUploading(false);
     if (cameraRef.current) cameraRef.current.value = "";
     if (pickerRef.current) pickerRef.current.value = "";
+
+    const firstImage = uploaded.find((f) => f.type === "image");
+    if (firstImage && onAnalyzed) {
+      setAnalyzing(true);
+      try {
+        const res = await fetch("/api/analyze-photo", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl: firstImage.url }),
+        });
+        const data = await res.json();
+        if (res.ok && data.note) {
+          onAnalyzed(data.note);
+        }
+      } catch {
+        // AI дүн шинжилгээ амжилтгүй бол дуугүй өнгөрнө, багш гараар бичиж болно
+      } finally {
+        setAnalyzing(false);
+      }
+    }
   }
 
   function removeAt(idx: number) {
@@ -126,6 +149,7 @@ export default function PhotoCapture({
       </div>
 
       {uploading && <p className="mt-1 text-xs text-slate-500">Хуулж байна...</p>}
+      {analyzing && <p className="mt-1 text-xs text-indigo-600">🤖 AI зургийг ажиглаж, тэмдэглэл бэлдэж байна...</p>}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
