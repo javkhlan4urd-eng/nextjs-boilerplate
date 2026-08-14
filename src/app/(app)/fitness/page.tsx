@@ -12,9 +12,9 @@ const LEVEL_STYLE: Record<string, { bg: string; text: string }> = {
 export default async function FitnessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ group?: string }>;
+  searchParams: Promise<{ group?: string; year?: string }>;
 }) {
-  const { group } = await searchParams;
+  const { group, year } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,22 +22,41 @@ export default async function FitnessPage({
 
   const { data: groups } = await supabase
     .from("groups")
-    .select("id, name")
+    .select("id, name, school_year")
     .eq("teacher_id", user!.id)
     .order("name");
+
+  const schoolYears = Array.from(
+    new Set((groups ?? []).map((g) => g.school_year).filter((y): y is string => !!y))
+  ).sort();
 
   let query = supabase
     .from("fitness_tests")
     .select(
-      "*, children!inner(id, first_name, last_name, group_id, groups!inner(teacher_id, name))"
+      "*, children!inner(id, first_name, last_name, group_id, groups!inner(teacher_id, name, school_year))"
     )
     .eq("children.groups.teacher_id", user!.id)
     .order("tested_on", { ascending: false })
     .limit(100);
 
   if (group) query = query.eq("children.group_id", group);
+  if (year) query = query.eq("children.groups.school_year", year);
 
   const { data: tests } = await query;
+
+  const reportHref = (() => {
+    const params = new URLSearchParams();
+    if (group) params.set("group", group);
+    if (year) params.set("year", year);
+    const qs = params.toString();
+    return qs ? `/fitness/report?${qs}` : "/fitness/report";
+  })();
+  const newHref = (() => {
+    const params = new URLSearchParams();
+    if (group) params.set("group", group);
+    const qs = params.toString();
+    return qs ? `/fitness/new?${qs}` : "/fitness/new";
+  })();
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -50,13 +69,13 @@ export default async function FitnessPage({
         </div>
         <div className="flex gap-2">
           <Link
-            href={group ? `/fitness/report?group=${group}` : "/fitness/report"}
+            href={reportHref}
             className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
           >
             📊 Тайлан, анализ
           </Link>
           <Link
-            href={group ? `/fitness/new?group=${group}` : "/fitness/new"}
+            href={newHref}
             className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95"
           >
             + Сорил нэмэх
@@ -64,31 +83,65 @@ export default async function FitnessPage({
         </div>
       </div>
 
-      {groups && groups.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href="/fitness"
-            className={`rounded-full px-3 py-1 text-sm font-medium ${
-              !group
-                ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
-                : "bg-white text-slate-600 border border-slate-200"
-            }`}
-          >
-            Бүгд
-          </Link>
-          {groups.map((g) => (
+      {schoolYears.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-1.5 text-xs font-medium text-slate-500">Хичээлийн жил</p>
+          <div className="flex flex-wrap gap-2">
             <Link
-              key={g.id}
-              href={`/fitness?group=${g.id}`}
+              href={group ? `/fitness?group=${group}` : "/fitness"}
               className={`rounded-full px-3 py-1 text-sm font-medium ${
-                group === g.id
+                !year
                   ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
                   : "bg-white text-slate-600 border border-slate-200"
               }`}
             >
-              {g.name}
+              Бүх жил
             </Link>
-          ))}
+            {schoolYears.map((y) => (
+              <Link
+                key={y}
+                href={group ? `/fitness?group=${group}&year=${y}` : `/fitness?year=${y}`}
+                className={`rounded-full px-3 py-1 text-sm font-medium ${
+                  year === y
+                    ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
+                    : "bg-white text-slate-600 border border-slate-200"
+                }`}
+              >
+                {y}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {groups && groups.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-1.5 text-xs font-medium text-slate-500">Бүлэг</p>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={year ? `/fitness?year=${year}` : "/fitness"}
+              className={`rounded-full px-3 py-1 text-sm font-medium ${
+                !group
+                  ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
+                  : "bg-white text-slate-600 border border-slate-200"
+              }`}
+            >
+              Бүгд
+            </Link>
+            {groups.map((g) => (
+              <Link
+                key={g.id}
+                href={year ? `/fitness?group=${g.id}&year=${year}` : `/fitness?group=${g.id}`}
+                className={`rounded-full px-3 py-1 text-sm font-medium ${
+                  group === g.id
+                    ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
+                    : "bg-white text-slate-600 border border-slate-200"
+                }`}
+              >
+                {g.name}
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 

@@ -6,7 +6,7 @@ import PrintButton from "@/components/PrintButton";
 export default async function FitnessReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ group?: string; from?: string; to?: string }>;
+  searchParams: Promise<{ group?: string; year?: string; from?: string; to?: string }>;
 }) {
   const sp = await searchParams;
   const supabase = await createClient();
@@ -16,9 +16,13 @@ export default async function FitnessReportPage({
 
   const { data: groups } = await supabase
     .from("groups")
-    .select("id, name")
+    .select("id, name, school_year")
     .eq("teacher_id", user!.id)
     .order("name");
+
+  const schoolYears = Array.from(
+    new Set((groups ?? []).map((g) => g.school_year).filter((y): y is string => !!y))
+  ).sort();
 
   const today = new Date().toISOString().slice(0, 10);
   const defaultFrom = new Date(new Date().setFullYear(new Date().getFullYear() - 1))
@@ -30,7 +34,7 @@ export default async function FitnessReportPage({
   let query = supabase
     .from("fitness_tests")
     .select(
-      "child_id, tested_on, age_group, gender, speed_score, strength_score, agility_score, balance_score, total_score, level, children!inner(id, first_name, last_name, group_id, groups!inner(teacher_id, name))"
+      "child_id, tested_on, age_group, gender, speed_score, strength_score, agility_score, balance_score, total_score, level, children!inner(id, first_name, last_name, group_id, groups!inner(teacher_id, name, school_year))"
     )
     .eq("children.groups.teacher_id", user!.id)
     .gte("tested_on", from)
@@ -38,6 +42,7 @@ export default async function FitnessReportPage({
     .order("tested_on", { ascending: false });
 
   if (sp.group) query = query.eq("children.group_id", sp.group);
+  if (sp.year) query = query.eq("children.groups.school_year", sp.year);
 
   const { data: rawRows } = await query;
 
@@ -56,6 +61,7 @@ export default async function FitnessReportPage({
   }) as RawRow[];
 
   const groupLabel = sp.group ? groups?.find((g) => g.id === sp.group)?.name ?? "" : "Бүх бүлэг (нэгдсэн)";
+  const yearLabel = sp.year ? ` · ${sp.year} хичээлийн жил` : "";
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -72,12 +78,24 @@ export default async function FitnessReportPage({
 
       <form className="no-print mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3">
         <div>
+          <label className="block text-xs font-medium text-slate-500">Хичээлийн жил</label>
+          <select name="year" defaultValue={sp.year ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">Бүх жил</option>
+            {schoolYears.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className="block text-xs font-medium text-slate-500">Бүлэг</label>
           <select name="group" defaultValue={sp.group ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
             <option value="">Бүх бүлэг (нэгдсэн)</option>
             {groups?.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name}
+                {g.school_year ? ` (${g.school_year})` : ""}
               </option>
             ))}
           </select>
@@ -100,7 +118,7 @@ export default async function FitnessReportPage({
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Биеийн тамирын сорилын тайлан</h2>
           <p className="text-sm text-slate-500">
-            {groupLabel} · Хугацаа: {from} — {to} · Нийт сорил: {rows.length}
+            {groupLabel}{yearLabel} · Хугацаа: {from} — {to} · Нийт сорил: {rows.length}
           </p>
         </div>
 

@@ -15,6 +15,7 @@ export default async function AnalysisPage({
   searchParams: Promise<{
     group?: string;
     child?: string;
+    schoolYear?: string;
     year?: string;
     granularity?: string;
     periodA?: string;
@@ -33,16 +34,21 @@ export default async function AnalysisPage({
 
   const { data: groups } = await supabase
     .from("groups")
-    .select("id, name")
+    .select("id, name, school_year")
     .eq("teacher_id", user!.id)
     .order("name");
 
+  const schoolYears = Array.from(
+    new Set((groups ?? []).map((g) => g.school_year).filter((y): y is string => !!y))
+  ).sort();
+
   let childrenQuery = supabase
     .from("children")
-    .select("id, first_name, last_name, group_id, groups!inner(teacher_id)")
+    .select("id, first_name, last_name, group_id, groups!inner(teacher_id, school_year)")
     .eq("groups.teacher_id", user!.id)
     .order("first_name");
   if (sp.group) childrenQuery = childrenQuery.eq("group_id", sp.group);
+  if (sp.schoolYear) childrenQuery = childrenQuery.eq("groups.school_year", sp.schoolYear);
   const { data: children } = await childrenQuery;
 
   const { data: domains } = await supabase
@@ -53,10 +59,11 @@ export default async function AnalysisPage({
 
   let obsQuery = supabase
     .from("observations")
-    .select("domain_id, level, observed_on, children!inner(group_id, groups!inner(teacher_id))")
+    .select("domain_id, level, observed_on, children!inner(group_id, groups!inner(teacher_id, school_year))")
     .eq("children.groups.teacher_id", user!.id);
   if (sp.group) obsQuery = obsQuery.eq("children.group_id", sp.group);
   if (sp.child) obsQuery = obsQuery.eq("child_id", sp.child);
+  if (sp.schoolYear) obsQuery = obsQuery.eq("children.groups.school_year", sp.schoolYear);
 
   const { data: rawRows } = await obsQuery;
   const rows: ObsRow[] = (rawRows ?? []).map((r) => ({
@@ -87,11 +94,22 @@ export default async function AnalysisPage({
       </p>
 
       <form className="mt-4 flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3">
+        {schoolYears.length > 0 && (
+          <select name="schoolYear" defaultValue={sp.schoolYear ?? ""} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <option value="">Бүх хичээлийн жил</option>
+            {schoolYears.map((y) => (
+              <option key={y} value={y}>
+                {y} хичээлийн жил
+              </option>
+            ))}
+          </select>
+        )}
         <select name="group" defaultValue={sp.group ?? ""} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
           <option value="">Бүх бүлэг</option>
           {groups?.map((g) => (
             <option key={g.id} value={g.id}>
               {g.name}
+              {g.school_year ? ` (${g.school_year})` : ""}
             </option>
           ))}
         </select>
@@ -147,6 +165,7 @@ export default async function AnalysisPage({
               {periods.length >= 2 && (
                 <form className="flex flex-wrap gap-2">
                   <input type="hidden" name="group" value={sp.group ?? ""} />
+                  <input type="hidden" name="schoolYear" value={sp.schoolYear ?? ""} />
                   <input type="hidden" name="child" value={sp.child ?? ""} />
                   <input type="hidden" name="year" value={String(year)} />
                   <input type="hidden" name="granularity" value={granularity} />
