@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Group } from "@/types/database";
 import { updateGroup, deleteGroup } from "@/app/(app)/groups/actions";
+import { GROUP_LEVEL_LABELS } from "@/lib/readiness";
 
 export default function GroupRow({
   group,
@@ -36,6 +37,18 @@ export default function GroupRow({
           placeholder="Хичээлийн жил, ж: 2025-2026"
           className="w-44 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
         />
+        <select
+          name="level"
+          defaultValue={group.level ?? ""}
+          className="w-52 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+        >
+          <option value="">-- Насны түвшин --</option>
+          {Object.entries(GROUP_LEVEL_LABELS).map(([lv, label]) => (
+            <option key={lv} value={lv}>
+              {label}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
           className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
@@ -64,6 +77,7 @@ export default function GroupRow({
         </Link>
         <p className="text-sm text-slate-500">
           {group.school_year ? `${group.school_year} · ` : ""}
+          {group.level ? `${GROUP_LEVEL_LABELS[group.level].split(" — ")[1]} · ` : ""}
           {childCount} хүүхэдтэй
         </p>
       </div>

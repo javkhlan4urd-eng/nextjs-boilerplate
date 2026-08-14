@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createGroup } from "./actions";
 import GroupRow from "@/components/GroupRow";
+import { GROUP_LEVEL_LABELS } from "@/lib/readiness";
 
 export default async function GroupsPage() {
   const supabase = await createClient();
@@ -48,6 +49,17 @@ export default async function GroupsPage() {
             placeholder="2025-2026"
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
           />
+        </div>
+        <div className="w-52">
+          <label className="block text-xs font-medium text-slate-500">Насны түвшин</label>
+          <select name="level" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+            <option value="">-- Сонгох --</option>
+            {Object.entries(GROUP_LEVEL_LABELS).map(([lv, label]) => (
+              <option key={lv} value={lv}>
+                {label}
+              </option>
+            ))}
+          </select>
         </div>
         <button
           type="submit"

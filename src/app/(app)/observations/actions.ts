@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { generateOutcomeConclusion, CONCLUSION_THRESHOLD } from "@/lib/outcomeConclusion";
 
 export async function createObservation(formData: FormData) {
   const supabase = await createClient();
@@ -14,6 +15,8 @@ export async function createObservation(formData: FormData) {
   const id = String(formData.get("id"));
   const child_id = String(formData.get("child_id"));
   const domain_id = String(formData.get("domain_id"));
+  const outcomeRaw = String(formData.get("outcome_id") || "");
+  const outcome_id = outcomeRaw || null;
   const level = Number(formData.get("level"));
   const observed_on = String(formData.get("observed_on") || new Date().toISOString().slice(0, 10));
   const note = String(formData.get("note") || "").trim();
@@ -36,6 +39,7 @@ export async function createObservation(formData: FormData) {
     id,
     child_id,
     domain_id,
+    outcome_id,
     teacher_id: user.id,
     observed_on,
     level,
@@ -56,6 +60,53 @@ export async function createObservation(formData: FormData) {
 
   revalidatePath("/observations");
   revalidatePath(`/children/${child_id}`);
+
+  if (outcome_id) {
+    try {
+      const { data: outcomeRows } = await supabase
+        .from("observations")
+        .select("note, observed_on")
+        .eq("child_id", child_id)
+        .eq("outcome_id", outcome_id)
+        .not("note", "is", null)
+        .order("observed_on", { ascending: true });
+
+      const notes = (outcomeRows ?? []).filter((r) => r.note && r.note.trim());
+
+      if (notes.length >= CONCLUSION_THRESHOLD) {
+        const [{ data: child }, { data: outcome }] = await Promise.all([
+          supabase.from("children").select("first_name, last_name").eq("id", child_id).single(),
+          supabase.from("learning_outcomes").select("code, description").eq("id", outcome_id).single(),
+        ]);
+
+        if (child && outcome) {
+          const childName = `${child.last_name ? child.last_name + " " : ""}${child.first_name}`;
+          const conclusion = await generateOutcomeConclusion({
+            childName,
+            outcomeCode: outcome.code,
+            outcomeDescription: outcome.description,
+            notes: notes.map((n) => ({ observed_on: n.observed_on, note: n.note as string })),
+          });
+
+          if (conclusion) {
+            await supabase.from("outcome_conclusions").upsert(
+              {
+                child_id,
+                outcome_id,
+                teacher_id: user.id,
+                conclusion,
+                observation_count: notes.length,
+                generated_at: new Date().toISOString(),
+              },
+              { onConflict: "child_id,outcome_id" }
+            );
+          }
+        }
+      }
+    } catch (e) {
+      console.error("outcome conclusion generation failed:", e);
+    }
+  }
 
   if (stage === "garaa") {
     revalidatePath("/assessment/garaa");

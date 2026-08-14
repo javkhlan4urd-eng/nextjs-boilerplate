@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import PhotoCapture, { type UploadedFile } from "./PhotoCapture";
 import { LEVEL_LABELS } from "@/types/database";
 import { LEVEL_STYLES } from "@/lib/colors";
@@ -8,16 +8,25 @@ import { LEVEL_STYLES } from "@/lib/colors";
 interface ChildOption {
   id: string;
   label: string;
+  groupLevel: number | null;
 }
 interface DomainOption {
   id: string;
   name: string;
+}
+interface OutcomeOption {
+  id: string;
+  domain_id: string;
+  level: number | null;
+  code: string;
+  description: string;
 }
 
 export default function ObservationForm({
   action,
   childOptions,
   domainOptions,
+  outcomeOptions = [],
   defaultChildId,
   stage,
   noteLabel,
@@ -26,6 +35,7 @@ export default function ObservationForm({
   action: (formData: FormData) => Promise<void>;
   childOptions: ChildOption[];
   domainOptions: DomainOption[];
+  outcomeOptions?: OutcomeOption[];
   defaultChildId?: string;
   stage?: "garaa" | "yavts";
   noteLabel?: string;
@@ -37,6 +47,20 @@ export default function ObservationForm({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [childId, setChildId] = useState(defaultChildId ?? "");
+  const [domainId, setDomainId] = useState("");
+  const [outcomeId, setOutcomeId] = useState("");
+
+  const selectedChild = childOptions.find((c) => c.id === childId);
+
+  const filteredOutcomes = useMemo(() => {
+    if (!domainId) return [];
+    return outcomeOptions.filter(
+      (o) =>
+        o.domain_id === domainId &&
+        (!selectedChild?.groupLevel || !o.level || o.level === selectedChild.groupLevel)
+    );
+  }, [outcomeOptions, domainId, selectedChild]);
 
   return (
     <form
@@ -69,7 +93,8 @@ export default function ObservationForm({
           <select
             name="child_id"
             required
-            defaultValue={defaultChildId ?? ""}
+            value={childId}
+            onChange={(e) => setChildId(e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
           >
             <option value="" disabled>
@@ -100,7 +125,11 @@ export default function ObservationForm({
         <select
           name="domain_id"
           required
-          defaultValue=""
+          value={domainId}
+          onChange={(e) => {
+            setDomainId(e.target.value);
+            setOutcomeId("");
+          }}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         >
           <option value="" disabled>
@@ -113,6 +142,30 @@ export default function ObservationForm({
           ))}
         </select>
       </div>
+
+      {domainId && filteredOutcomes.length > 0 && (
+        <div>
+          <label className="block text-xs font-medium text-slate-500">
+            Суралцахуйн үр дүн (СҮД) <span className="text-slate-400">(заавал биш)</span>
+          </label>
+          <select
+            name="outcome_id"
+            value={outcomeId}
+            onChange={(e) => setOutcomeId(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">-- Ерөнхий (тодорхой СҮД сонгохгүй) --</option>
+            {filteredOutcomes.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.code}: {o.description}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-400">
+            Тухайн СҮД-ээр 3-4 удаа тэмдэглэл бичсэний дараа AI автоматаар дүгнэлт гаргана.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="block text-xs font-medium text-slate-500">

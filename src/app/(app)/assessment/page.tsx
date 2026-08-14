@@ -25,6 +25,14 @@ const CARDS = [
     from: "from-amber-400",
     to: "to-orange-500",
   },
+  {
+    href: "/reports/outcomes",
+    icon: "📋",
+    title: "СҮД дүгнэлтийн тайлан",
+    desc: "Суралцахуйн үр дүн (СҮД) тус бүрээр AI-ийн гаргасан дүгнэлт, чиглэл бүрээр болон нэгдсэн диаграм.",
+    from: "from-rose-500",
+    to: "to-pink-500",
+  },
 ];
 
 export default function AssessmentHubPage() {

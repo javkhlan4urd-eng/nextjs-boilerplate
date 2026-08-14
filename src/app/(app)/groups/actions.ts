@@ -12,12 +12,15 @@ export async function createGroup(formData: FormData) {
 
   const name = String(formData.get("name") || "").trim();
   const schoolYear = String(formData.get("school_year") || "").trim();
+  const levelRaw = String(formData.get("level") || "");
+  const level = levelRaw ? Number(levelRaw) : null;
   if (!name) throw new Error("Бүлгийн нэрийг оруулна уу");
 
   const { error } = await supabase.from("groups").insert({
     teacher_id: user.id,
     name,
     school_year: schoolYear || null,
+    level,
   });
   if (error) throw new Error(error.message);
 
@@ -29,11 +32,13 @@ export async function updateGroup(formData: FormData) {
   const id = String(formData.get("id"));
   const name = String(formData.get("name") || "").trim();
   const schoolYear = String(formData.get("school_year") || "").trim();
+  const levelRaw = String(formData.get("level") || "");
+  const level = levelRaw ? Number(levelRaw) : null;
   if (!name) throw new Error("Бүлгийн нэрийг оруулна уу");
 
   const { error } = await supabase
     .from("groups")
-    .update({ name, school_year: schoolYear || null })
+    .update({ name, school_year: schoolYear || null, level })
     .eq("id", id);
   if (error) throw new Error(error.message);
 

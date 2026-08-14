@@ -13,6 +13,7 @@ export interface Group {
   teacher_id: string;
   name: string;
   school_year: string | null;
+  level: 1 | 2 | 3 | 4 | null;
   created_at: string;
 }
 
