@@ -48,12 +48,20 @@ export default async function FitnessPage({
             Хурд, Хүч, Авхаалж самбаа, Тэнцвэрийн сорилын үр дүн.
           </p>
         </div>
-        <Link
-          href={group ? `/fitness/new?group=${group}` : "/fitness/new"}
-          className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95"
-        >
-          + Сорил нэмэх
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href={group ? `/fitness/report?group=${group}` : "/fitness/report"}
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            📊 Тайлан, анализ
+          </Link>
+          <Link
+            href={group ? `/fitness/new?group=${group}` : "/fitness/new"}
+            className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95"
+          >
+            + Сорил нэмэх
+          </Link>
+        </div>
       </div>
 
       {groups && groups.length > 0 && (
