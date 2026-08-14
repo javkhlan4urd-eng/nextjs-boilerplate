@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { href: "/groups", label: "Бүлэг" },
   { href: "/children", label: "Хүүхдүүд" },
   { href: "/observations", label: "Ажиглалт тэмдэглэл" },
+  { href: "/assessment", label: "Үнэлгээ" },
   { href: "/fitness", label: "Биеийн тамирын сорил" },
   { href: "/analysis", label: "Анализ дүгнэлт" },
   { href: "/reports", label: "Тайлан тохиргоо" },

@@ -143,6 +143,7 @@ create table if not exists public.observations (
   observed_on date not null default current_date,
   level smallint not null check (level between 1 and 4),
   note text,
+  stage text check (stage in ('garaa', 'yavts')),
   created_at timestamptz not null default now()
 );
 
@@ -150,6 +151,7 @@ create index if not exists observations_child_idx on public.observations (child_
 create index if not exists observations_teacher_idx on public.observations (teacher_id);
 create index if not exists observations_domain_idx on public.observations (domain_id);
 create index if not exists observations_observed_on_idx on public.observations (observed_on);
+create index if not exists observations_stage_idx on public.observations (stage);
 
 alter table public.observations enable row level security;
 

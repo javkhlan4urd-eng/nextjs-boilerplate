@@ -19,11 +19,17 @@ export default function ObservationForm({
   childOptions,
   domainOptions,
   defaultChildId,
+  stage,
+  noteLabel,
+  submitLabel,
 }: {
   action: (formData: FormData) => Promise<void>;
   childOptions: ChildOption[];
   domainOptions: DomainOption[];
   defaultChildId?: string;
+  stage?: "garaa" | "yavts";
+  noteLabel?: string;
+  submitLabel?: string;
 }) {
   const [obsId] = useState(() => crypto.randomUUID());
   const [level, setLevel] = useState<number | null>(null);
@@ -52,6 +58,7 @@ export default function ObservationForm({
       <input type="hidden" name="id" value={obsId} />
       <input type="hidden" name="level" value={level ?? ""} />
       <input type="hidden" name="media" value={JSON.stringify(media)} />
+      {stage && <input type="hidden" name="stage" value={stage} />}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
@@ -129,7 +136,9 @@ export default function ObservationForm({
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-slate-500">Ажиглалт, тэмдэглэл</label>
+        <label className="block text-xs font-medium text-slate-500">
+          {noteLabel ?? "Ажиглалт, тэмдэглэл"}
+        </label>
         <textarea
           name="note"
           rows={3}
@@ -159,7 +168,7 @@ export default function ObservationForm({
         disabled={submitting}
         className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95 disabled:opacity-60"
       >
-        {submitting ? "Хадгалж байна..." : "Ажиглалт хадгалах"}
+        {submitting ? "Хадгалж байна..." : (submitLabel ?? "Ажиглалт хадгалах")}
       </button>
     </form>
   );

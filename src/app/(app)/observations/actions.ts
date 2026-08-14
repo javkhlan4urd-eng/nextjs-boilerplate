@@ -17,6 +17,8 @@ export async function createObservation(formData: FormData) {
   const level = Number(formData.get("level"));
   const observed_on = String(formData.get("observed_on") || new Date().toISOString().slice(0, 10));
   const note = String(formData.get("note") || "").trim();
+  const stageRaw = String(formData.get("stage") || "");
+  const stage = stageRaw === "garaa" || stageRaw === "yavts" ? stageRaw : null;
   const mediaJson = String(formData.get("media") || "[]");
 
   let media: { url: string; type: "image" | "video" }[] = [];
@@ -38,6 +40,7 @@ export async function createObservation(formData: FormData) {
     observed_on,
     level,
     note: note || null,
+    stage,
   });
   if (error) throw new Error(error.message);
 
@@ -53,6 +56,15 @@ export async function createObservation(formData: FormData) {
 
   revalidatePath("/observations");
   revalidatePath(`/children/${child_id}`);
+
+  if (stage === "garaa") {
+    revalidatePath("/assessment/garaa");
+    redirect("/assessment/garaa");
+  }
+  if (stage === "yavts") {
+    revalidatePath("/assessment/yavts");
+    redirect("/assessment/yavts");
+  }
   redirect(`/children/${child_id}`);
 }
 
