@@ -1,9 +1,33 @@
 const CONCLUSION_THRESHOLD = 3;
 const MAX_NOTES_CONSIDERED = 4;
+const MAX_IMAGES_CONSIDERED = 6;
 
 export { CONCLUSION_THRESHOLD };
 
-export async function generateOutcomeConclusion({
+interface NoteInput {
+  observed_on: string;
+  note: string | null;
+  media?: { url: string; type: string }[];
+}
+
+export interface OutcomeAssessment {
+  conclusion: string;
+  nextSteps: string;
+}
+
+async function imageToInlinePart(url: string) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const contentType = res.headers.get("content-type") || "image/jpeg";
+    const buffer = Buffer.from(await res.arrayBuffer());
+    return { inline_data: { mime_type: contentType, data: buffer.toString("base64") } };
+  } catch {
+    return null;
+  }
+}
+
+export async function generateOutcomeAssessment({
   childName,
   outcomeCode,
   outcomeDescription,
@@ -12,46 +36,70 @@ export async function generateOutcomeConclusion({
   childName: string;
   outcomeCode: string;
   outcomeDescription: string;
-  notes: { observed_on: string; note: string }[];
-}): Promise<string | null> {
+  notes: NoteInput[];
+}): Promise<OutcomeAssessment | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
 
   const recentNotes = notes.slice(-MAX_NOTES_CONSIDERED);
   const notesText = recentNotes
-    .map((n, i) => `${i + 1}) [${n.observed_on}] ${n.note}`)
+    .map((n, i) => `${i + 1}) [${n.observed_on}] ${n.note || "(тэмдэглэлгүй, зөвхөн зураг)"}`)
     .join("\n");
 
-  const prompt = `Та цэцэрлэгийн туслах багш. СӨБ сургалтын хөтөлбөр, хүүхдийн хөгжлийн үнэлгээний аргачлалын дагуу дараах мэдээлэлд үндэслэн дүгнэлт бич.
+  const imageUrls = recentNotes
+    .flatMap((n) => (n.media ?? []).filter((m) => m.type === "image").map((m) => m.url))
+    .slice(0, MAX_IMAGES_CONSIDERED);
+
+  const imageParts = (
+    await Promise.all(imageUrls.map((url) => imageToInlinePart(url)))
+  ).filter((p): p is NonNullable<typeof p> => p !== null);
+
+  const prompt = `Та цэцэрлэгийн туслах багш. СӨБ сургалтын хөтөлбөр, хүүхдийн хөгжлийн үнэлгээний аргачлалын дагуу дараах мэдээлэлд (тэмдэглэл болон хавсаргасан зураг) үндэслэн дүгнэлт, цаашдын алхмыг бич.
 
 Хүүхэд: ${childName}
 Суралцахуйн үр дүн (СҮД): ${outcomeCode} — ${outcomeDescription}
 
 Багшийн бичсэн ажиглалтын тэмдэглэлүүд:
 ${notesText}
+${imageParts.length > 0 ? `\n(Мөн ${imageParts.length} ажиглалтын зураг хавсаргасан болно, эдгээрийг харгалзан үз.)` : ""}
 
-Даалгавар: Дээрх ${recentNotes.length} ажиглалтад үндэслэн, тухайн хүүхэд энэ СҮД-ийг хэрхэн эзэмшиж байгааг 2-3 өгүүлбэрээр, монгол хэлээр, объектив бөгөөд СӨБ-ийн үнэлгээний хэллэгээр (жишээ нь: "эзэмшсэн", "хөгжиж байгаа", "дэмжлэг шаардлагатай" гэх мэт) дүгнэлт бич. Зөвхөн дүгнэлтийн текстийг бич, өөр юу ч нэмэлт бичих шаардлагагүй.`;
+Даалгавар: Дээрх мэдээлэлд (тэмдэглэл, зураг) үндэслэн, тухайн хүүхэд энэ СҮД-ийг хэрхэн эзэмшиж байгааг үнэлж, монгол хэлээр бич. Хариултаа яг дараах форматаар, хоёр хэсэгтэй бич:
+
+ДҮГНЭЛТ:
+(2-3 өгүүлбэрээр, объектив бөгөөд СӨБ-ийн үнэлгээний хэллэгээр — "эзэмшсэн", "хөгжиж байгаа", "дэмжлэг шаардлагатай" гэх мэт — дүгнэлт бич)
+
+ЦААШИД:
+(1-2 өгүүлбэрээр, багш цаашид ямар дэмжлэг, үйл ажиллагаа хийвэл тухайн хүүхэд энэ СҮД-ийг илүү сайн эзэмших талаар зөвлөмж бич)`;
 
   try {
+    const parts: Record<string, unknown>[] = [{ text: prompt }, ...imageParts];
     const res = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent",
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-goog-api-key": apiKey },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
+          contents: [{ parts }],
         }),
       }
     );
     if (!res.ok) {
-      console.error("Gemini conclusion error:", await res.text());
+      console.error("Gemini assessment error:", await res.text());
       return null;
     }
     const data = await res.json();
     const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    return text || null;
+    if (!text) return null;
+
+    const conclusionMatch = text.match(/ДҮГНЭЛТ:\s*([\s\S]*?)(?:ЦААШИД:|$)/i);
+    const nextStepsMatch = text.match(/ЦААШИД:\s*([\s\S]*)$/i);
+
+    const conclusion = conclusionMatch?.[1]?.trim() || text;
+    const nextSteps = nextStepsMatch?.[1]?.trim() || "";
+
+    return { conclusion, nextSteps };
   } catch (e) {
-    console.error("generateOutcomeConclusion error:", e);
+    console.error("generateOutcomeAssessment error:", e);
     return null;
   }
 }

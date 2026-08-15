@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import PhotoCapture, { type UploadedFile } from "./PhotoCapture";
-import { updateOutcomeConclusion } from "@/app/(app)/observations/actions";
+import { updateOutcomeConclusion, updateObservation, generateOutcomeAssessmentNow } from "@/app/(app)/observations/actions";
 import { LEVEL_LABELS } from "@/types/database";
 import { LEVEL_STYLES } from "@/lib/colors";
 
@@ -20,6 +20,93 @@ interface ProgressData {
   threshold: number;
   conclusion: string | null;
   nextSteps: string | null;
+}
+
+function ObservationEditCard({
+  obs,
+  onSaved,
+  onCancel,
+}: {
+  obs: ObsRow;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [note, setNote] = useState(obs.note ?? "");
+  const [level, setLevel] = useState(obs.level);
+  const [media, setMedia] = useState<UploadedFile[]>(
+    obs.media.map((m) => ({ url: m.url, type: m.type as "image" | "video" }))
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setError(null);
+    setSaving(true);
+    try {
+      await updateObservation(obs.id, note, level, media);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Алдаа гарлаа");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/40 p-4">
+      <span className="text-xs font-semibold text-amber-600">Засварлаж байна</span>
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
+        {[1, 2, 3, 4].map((lv) => (
+          <button
+            key={lv}
+            type="button"
+            onClick={() => setLevel(lv)}
+            className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+              level === lv
+                ? `border-transparent text-white shadow-sm ${LEVEL_STYLES[lv].solid}`
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {LEVEL_LABELS[lv]}
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        rows={3}
+        className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+      />
+      <div className="mt-2">
+        <PhotoCapture
+          bucket="observation-media"
+          folder={`observations/${obs.id}`}
+          multiple
+          initial={media}
+          onChange={setMedia}
+          onAnalyzed={(suggested) => setNote((prev) => (prev.trim() ? prev : suggested))}
+        />
+      </div>
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="flex-1 rounded-lg bg-amber-600 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:opacity-60"
+        >
+          {saving ? "Хадгалж байна..." : "Хадгалах"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+        >
+          Цуцлах
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function OutcomeWorkspace({
@@ -43,6 +130,7 @@ export default function OutcomeWorkspace({
 }) {
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [draftNote, setDraftNote] = useState("");
   const [draftLevel, setDraftLevel] = useState<number | null>(null);
@@ -55,6 +143,8 @@ export default function OutcomeWorkspace({
   const [nextStepsDraft, setNextStepsDraft] = useState("");
   const [savingConclusion, setSavingConclusion] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,6 +207,20 @@ export default function OutcomeWorkspace({
     }
   }
 
+  async function aiFill() {
+    setAiError(null);
+    setAiGenerating(true);
+    try {
+      const result = await generateOutcomeAssessmentNow(childId, outcomeId);
+      setConclusionDraft(result.conclusion);
+      setNextStepsDraft(result.nextSteps);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Алдаа гарлаа");
+    } finally {
+      setAiGenerating(false);
+    }
+  }
+
   const finalLevel = (() => {
     if (!data || data.observations.length === 0) return null;
     const avg = data.observations.reduce((s, o) => s + o.level, 0) / data.observations.length;
@@ -142,18 +246,36 @@ export default function OutcomeWorkspace({
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {data?.observations.map((o, i) => {
-              const lv = LEVEL_STYLES[o.level];
-              return (
+            {data?.observations.map((o, i) =>
+              editingId === o.id ? (
+                <ObservationEditCard
+                  key={o.id}
+                  obs={o}
+                  onSaved={() => {
+                    setEditingId(null);
+                    load();
+                  }}
+                  onCancel={() => setEditingId(null)}
+                />
+              ) : (
                 <div
                   key={o.id}
                   className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-slate-400">Ажиглалт {i + 1}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${lv.bg} ${lv.text}`}>
-                      {LEVEL_LABELS[o.level]}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${LEVEL_STYLES[o.level].bg} ${LEVEL_STYLES[o.level].text}`}>
+                        {LEVEL_LABELS[o.level]}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setEditingId(o.id)}
+                        className="text-xs font-medium text-indigo-600 hover:underline"
+                      >
+                        Засах
+                      </button>
+                    </div>
                   </div>
                   {o.media.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -170,8 +292,8 @@ export default function OutcomeWorkspace({
                   <p className="mt-2 text-xs text-slate-400">{o.observed_on}</p>
                   <p className="mt-1 text-sm text-slate-700">{o.note || "—"}</p>
                 </div>
-              );
-            })}
+              )
+            )}
 
             <div className="rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50/40 p-4">
               <span className="text-xs font-semibold text-indigo-500">
@@ -235,12 +357,23 @@ export default function OutcomeWorkspace({
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 md:col-span-2">
-              <h4 className="text-sm font-semibold text-emerald-800">📝 Дүгнэлт</h4>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-sm font-semibold text-emerald-800">📝 Дүгнэлт</h4>
+                <button
+                  type="button"
+                  onClick={aiFill}
+                  disabled={aiGenerating || !data || data.observations.length === 0}
+                  className="rounded-full bg-white px-3 py-1 text-xs font-medium text-indigo-600 shadow-sm ring-1 ring-indigo-200 hover:bg-indigo-50 disabled:opacity-50"
+                >
+                  {aiGenerating ? "🤖 Бэлдэж байна..." : "🤖 AI-аар бөглөх"}
+                </button>
+              </div>
               <p className="mt-0.5 text-xs text-emerald-700/80">
                 {data && data.count >= data.threshold
                   ? "AI автоматаар бэлдсэн дүгнэлт — шаардвал засаж хадгална уу."
-                  : `${data?.threshold ?? 3}+ ажиглалт бичигдсэний дараа AI дүгнэлт автоматаар бэлдэнэ. Хүсвэл өөрөө бичиж болно.`}
+                  : `${data?.threshold ?? 3}+ ажиглалт бичигдсэний дараа AI дүгнэлт автоматаар бэлдэнэ. Одоо байгаа зураг, тэмдэглэлээр "AI-аар бөглөх" товчоор ч бэлдүүлж болно.`}
               </p>
+              {aiError && <p className="mt-1 text-xs text-red-600">{aiError}</p>}
               <textarea
                 value={conclusionDraft}
                 onChange={(e) => setConclusionDraft(e.target.value)}

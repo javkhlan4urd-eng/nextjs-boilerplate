@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { generateOutcomeConclusion, CONCLUSION_THRESHOLD } from "@/lib/outcomeConclusion";
+import { generateOutcomeAssessment, CONCLUSION_THRESHOLD } from "@/lib/outcomeConclusion";
 
 export async function createObservation(formData: FormData) {
   const supabase = await createClient();
@@ -65,7 +65,7 @@ export async function createObservation(formData: FormData) {
     try {
       const { data: outcomeRows } = await supabase
         .from("observations")
-        .select("note, observed_on")
+        .select("id, note, observed_on")
         .eq("child_id", child_id)
         .eq("outcome_id", outcome_id)
         .not("note", "is", null)
@@ -74,27 +74,43 @@ export async function createObservation(formData: FormData) {
       const notes = (outcomeRows ?? []).filter((r) => r.note && r.note.trim());
 
       if (notes.length >= CONCLUSION_THRESHOLD) {
-        const [{ data: child }, { data: outcome }] = await Promise.all([
+        const [{ data: child }, { data: outcome }, { data: mediaRows }] = await Promise.all([
           supabase.from("children").select("first_name, last_name").eq("id", child_id).single(),
           supabase.from("learning_outcomes").select("code, description").eq("id", outcome_id).single(),
+          supabase
+            .from("observation_media")
+            .select("observation_id, file_url, media_type")
+            .in("observation_id", notes.map((n) => n.id)),
         ]);
 
         if (child && outcome) {
+          const mediaByObs = new Map<string, { url: string; type: string }[]>();
+          for (const m of mediaRows ?? []) {
+            const arr = mediaByObs.get(m.observation_id) ?? [];
+            arr.push({ url: m.file_url, type: m.media_type });
+            mediaByObs.set(m.observation_id, arr);
+          }
+
           const childName = `${child.last_name ? child.last_name + " " : ""}${child.first_name}`;
-          const conclusion = await generateOutcomeConclusion({
+          const assessment = await generateOutcomeAssessment({
             childName,
             outcomeCode: outcome.code,
             outcomeDescription: outcome.description,
-            notes: notes.map((n) => ({ observed_on: n.observed_on, note: n.note as string })),
+            notes: notes.map((n) => ({
+              observed_on: n.observed_on,
+              note: n.note,
+              media: mediaByObs.get(n.id) ?? [],
+            })),
           });
 
-          if (conclusion) {
+          if (assessment) {
             await supabase.from("outcome_conclusions").upsert(
               {
                 child_id,
                 outcome_id,
                 teacher_id: user.id,
-                conclusion,
+                conclusion: assessment.conclusion,
+                next_steps: assessment.nextSteps || null,
                 observation_count: notes.length,
                 generated_at: new Date().toISOString(),
               },
@@ -157,6 +173,89 @@ export async function updateOutcomeConclusion(
   if (error) throw new Error(error.message);
 
   revalidatePath("/reports/outcomes");
+}
+
+export async function updateObservation(
+  id: string,
+  note: string,
+  level: number,
+  media: { url: string; type: "image" | "video" }[]
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Нэвтрээгүй байна");
+
+  if (!level || level < 1 || level > 4) throw new Error("Түвшинг сонгоно уу");
+
+  const { data: obs, error } = await supabase
+    .from("observations")
+    .update({ note: note.trim() || null, level })
+    .eq("id", id)
+    .select("child_id, outcome_id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  await supabase.from("observation_media").delete().eq("observation_id", id);
+  if (media.length > 0) {
+    await supabase.from("observation_media").insert(
+      media.map((m) => ({ observation_id: id, file_url: m.url, media_type: m.type }))
+    );
+  }
+
+  revalidatePath("/observations");
+  if (obs?.child_id) revalidatePath(`/children/${obs.child_id}`);
+}
+
+export async function generateOutcomeAssessmentNow(childId: string, outcomeId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Нэвтрээгүй байна");
+
+  const { data: rows } = await supabase
+    .from("observations")
+    .select("id, note, observed_on")
+    .eq("child_id", childId)
+    .eq("outcome_id", outcomeId)
+    .order("observed_on", { ascending: true });
+
+  const notes = rows ?? [];
+  if (notes.length === 0) throw new Error("Энэ СҮД-д ажиглалт бүртгэгдээгүй байна");
+
+  const [{ data: child }, { data: outcome }, { data: mediaRows }] = await Promise.all([
+    supabase.from("children").select("first_name, last_name").eq("id", childId).single(),
+    supabase.from("learning_outcomes").select("code, description").eq("id", outcomeId).single(),
+    supabase
+      .from("observation_media")
+      .select("observation_id, file_url, media_type")
+      .in("observation_id", notes.map((n) => n.id)),
+  ]);
+  if (!child || !outcome) throw new Error("Мэдээлэл олдсонгүй");
+
+  const mediaByObs = new Map<string, { url: string; type: string }[]>();
+  for (const m of mediaRows ?? []) {
+    const arr = mediaByObs.get(m.observation_id) ?? [];
+    arr.push({ url: m.file_url, type: m.media_type });
+    mediaByObs.set(m.observation_id, arr);
+  }
+
+  const childName = `${child.last_name ? child.last_name + " " : ""}${child.first_name}`;
+  const assessment = await generateOutcomeAssessment({
+    childName,
+    outcomeCode: outcome.code,
+    outcomeDescription: outcome.description,
+    notes: notes.map((n) => ({
+      observed_on: n.observed_on,
+      note: n.note,
+      media: mediaByObs.get(n.id) ?? [],
+    })),
+  });
+  if (!assessment) throw new Error("AI дүгнэлт үүсгэж чадсангүй");
+
+  return assessment;
 }
 
 export async function deleteObservation(formData: FormData) {
