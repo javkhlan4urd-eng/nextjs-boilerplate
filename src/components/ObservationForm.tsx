@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PhotoCapture, { type UploadedFile } from "./PhotoCapture";
 import { LEVEL_LABELS } from "@/types/database";
 import { LEVEL_STYLES } from "@/lib/colors";
@@ -61,6 +61,35 @@ export default function ObservationForm({
         (!selectedChild?.groupLevel || !o.level || o.level === selectedChild.groupLevel)
     );
   }, [outcomeOptions, domainId, selectedChild]);
+
+  const [progress, setProgress] = useState<{
+    notes: { observed_on: string; note: string }[];
+    count: number;
+    threshold: number;
+    conclusion: string | null;
+  } | null>(null);
+  const [progressLoading, setProgressLoading] = useState(false);
+
+  useEffect(() => {
+    if (!childId || !outcomeId) {
+      setProgress(null);
+      return;
+    }
+    let cancelled = false;
+    setProgressLoading(true);
+    fetch(`/api/outcome-progress?child_id=${childId}&outcome_id=${outcomeId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled && !data.error) setProgress(data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setProgressLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [childId, outcomeId]);
 
   return (
     <form
@@ -164,6 +193,33 @@ export default function ObservationForm({
           <p className="mt-1 text-xs text-slate-400">
             Тухайн СҮД-ээр 3-4 удаа тэмдэглэл бичсэний дараа AI автоматаар дүгнэлт гаргана.
           </p>
+
+          {progressLoading && (
+            <p className="mt-2 text-xs text-slate-400">Ахиц шалгаж байна...</p>
+          )}
+
+          {progress && !progressLoading && (
+            <div className="mt-2 rounded-lg bg-slate-50 p-3">
+              <p className="text-xs font-medium text-slate-600">
+                Энэ СҮД дээр өмнө нь {progress.count}/{progress.threshold} тэмдэглэл бичигдсэн
+                {progress.count >= progress.threshold ? " — дараагийн тэмдэглэлд дүгнэлт шинэчлэгдэнэ." : ""}
+              </p>
+              {progress.notes.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {progress.notes.map((n, i) => (
+                    <li key={i} className="text-xs text-slate-500">
+                      <span className="text-slate-400">{n.observed_on}:</span> {n.note}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {progress.conclusion && (
+                <p className="mt-2 text-xs text-emerald-700">
+                  <span className="font-semibold">Одоогийн дүгнэлт:</span> {progress.conclusion}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
