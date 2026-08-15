@@ -50,6 +50,7 @@ export interface Observation {
   domain_id: string;
   teacher_id: string;
   observed_on: string;
+  routine_period: string | null;
   level: 1 | 2 | 3 | 4 | null;
   observed_fact: string | null;
   development_direction: string | null;
@@ -60,6 +61,15 @@ export interface Observation {
   methodology_note: string | null;
   created_at: string;
 }
+
+export const ROUTINE_PERIODS = [
+  "Өглөөний дасгалын цаг",
+  "Тойргийн цаг",
+  "Чиглүүлэгтэй тоглоом үйл ажиллагаа",
+  "Төвийн үйл ажиллагаа",
+  "Зугаалга",
+  "Бусад",
+] as const;
 
 export const OBSERVATION_FIELDS: {
   key: "observed_fact" | "development_direction" | "child_performance" | "note" | "teacher_conclusion" | "next_action" | "methodology_note";

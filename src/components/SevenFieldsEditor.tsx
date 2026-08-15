@@ -18,7 +18,7 @@ export function emptyObservationFields(): ObservationFields {
 export async function analyzeObservation(
   input: { mediaUrl?: string; planText?: string },
   context: { domainName?: string; outcomeCode?: string; outcomeDescription?: string }
-): Promise<ObservationFields> {
+): Promise<ObservationFields & { routine_period: string }> {
   const res = await fetch("/api/analyze-observation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -34,6 +34,7 @@ export async function analyzeObservation(
     teacher_conclusion: data.teacher_conclusion ?? "",
     next_action: data.next_action ?? "",
     methodology_note: data.methodology_note ?? "",
+    routine_period: data.routine_period ?? "",
   };
 }
 

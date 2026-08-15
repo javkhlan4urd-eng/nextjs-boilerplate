@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import PhotoCapture, { type UploadedFile } from "./PhotoCapture";
 import OutcomeWorkspace from "./OutcomeWorkspace";
 import SevenFieldsEditor, { emptyObservationFields, analyzeObservation } from "./SevenFieldsEditor";
-import { LEVEL_LABELS } from "@/types/database";
+import { LEVEL_LABELS, ROUTINE_PERIODS } from "@/types/database";
 import { LEVEL_STYLES } from "@/lib/colors";
 
 interface ChildOption {
@@ -47,6 +47,7 @@ export default function ObservationForm({
   const [level, setLevel] = useState<number | null>(null);
   const [media, setMedia] = useState<UploadedFile[]>([]);
   const [fields, setFields] = useState(emptyObservationFields());
+  const [routinePeriod, setRoutinePeriod] = useState("");
   const [aiFilling, setAiFilling] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -193,14 +194,34 @@ export default function ObservationForm({
           <input type="hidden" name="methodology_note" value={fields.methodology_note} />
           {stage && <input type="hidden" name="stage" value={stage} />}
 
-          <div>
-            <label className="block text-xs font-medium text-slate-500">Огноо</label>
-            <input
-              type="date"
-              name="observed_on"
-              defaultValue={new Date().toISOString().slice(0, 10)}
-              className="mt-1 w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-xs font-medium text-slate-500">Огноо</label>
+              <input
+                type="date"
+                name="observed_on"
+                defaultValue={new Date().toISOString().slice(0, 10)}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500">
+                Өдрийн дэглэмийн цаг <span className="text-slate-400">(заавал биш)</span>
+              </label>
+              <select
+                name="routine_period"
+                value={routinePeriod}
+                onChange={(e) => setRoutinePeriod(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">Сонгоно уу</option>
+                {ROUTINE_PERIODS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
@@ -243,6 +264,7 @@ export default function ObservationForm({
                       { domainName: selectedDomain?.name }
                     );
                     setFields(result);
+                    if (result.routine_period) setRoutinePeriod(result.routine_period);
                   } catch (e) {
                     setAiError(e instanceof Error ? e.message : "Алдаа гарлаа");
                   } finally {

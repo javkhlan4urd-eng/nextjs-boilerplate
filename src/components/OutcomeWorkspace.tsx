@@ -10,12 +10,13 @@ import {
   type ObservationFields,
 } from "@/app/(app)/observations/actions";
 import SevenFieldsEditor, { emptyObservationFields, analyzeObservation } from "./SevenFieldsEditor";
-import { LEVEL_LABELS, OBSERVATION_FIELDS } from "@/types/database";
+import { LEVEL_LABELS, OBSERVATION_FIELDS, ROUTINE_PERIODS } from "@/types/database";
 import { LEVEL_STYLES } from "@/lib/colors";
 
 interface ObsRow {
   id: string;
   observed_on: string;
+  routine_period: string | null;
   level: number | null;
   note: string | null;
   observed_fact: string | null;
@@ -46,7 +47,8 @@ function buildRecordedActivitySummary(observations: ObsRow[]): string {
         (p): p is string => !!p && p.trim().length > 0
       );
       if (parts.length === 0) return null;
-      return `Ажиглалт ${i + 1}: ${parts.join(" ")}`;
+      const periodTag = o.routine_period ? ` (${o.routine_period})` : "";
+      return `Ажиглалт ${i + 1}${periodTag}: ${parts.join(" ")}`;
     })
     .filter((s): s is string => s !== null)
     .join("\n");
@@ -99,7 +101,14 @@ function ObservationReadCard({
           )}
         </div>
       )}
-      <p className="mt-2 text-xs text-slate-400">{obs.observed_on}</p>
+      <p className="mt-2 text-xs text-slate-400">
+        {obs.observed_on}
+        {obs.routine_period && (
+          <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-slate-500">
+            {obs.routine_period}
+          </span>
+        )}
+      </p>
       <p className="mt-1 text-sm text-slate-700">{obs.note || "—"}</p>
 
       {extraFields.length > 0 && (
@@ -154,6 +163,7 @@ function ObservationEditCard({
     methodology_note: obs.methodology_note ?? "",
   });
   const [observedOn, setObservedOn] = useState(obs.observed_on);
+  const [routinePeriod, setRoutinePeriod] = useState(obs.routine_period ?? "");
   const [media, setMedia] = useState<UploadedFile[]>(
     obs.media.map((m) => ({ url: m.url, type: m.type as "image" | "video" }))
   );
@@ -173,6 +183,7 @@ function ObservationEditCard({
         { domainName, outcomeCode, outcomeDescription }
       );
       setFields(result);
+      if (result.routine_period) setRoutinePeriod(result.routine_period);
     } catch (e) {
       setAiError(e instanceof Error ? e.message : "Алдаа гарлаа");
     } finally {
@@ -184,7 +195,7 @@ function ObservationEditCard({
     setError(null);
     setSaving(true);
     try {
-      await updateObservation(obs.id, fields, media, observedOn);
+      await updateObservation(obs.id, fields, media, observedOn, routinePeriod);
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -210,12 +221,26 @@ function ObservationEditCard({
         </button>
       </div>
       {aiError && <p className="mt-1 text-xs text-red-600">{aiError}</p>}
-      <input
-        type="date"
-        value={observedOn}
-        onChange={(e) => setObservedOn(e.target.value)}
-        className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-      />
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <input
+          type="date"
+          value={observedOn}
+          onChange={(e) => setObservedOn(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+        />
+        <select
+          value={routinePeriod}
+          onChange={(e) => setRoutinePeriod(e.target.value)}
+          className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+        >
+          <option value="">Өдрийн дэглэмийн цаг...</option>
+          {ROUTINE_PERIODS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="mt-2">
         <PhotoCapture
           bucket="observation-media"
@@ -277,6 +302,7 @@ export default function OutcomeWorkspace({
   const [draftMedia, setDraftMedia] = useState<UploadedFile[]>([]);
   const [draftPlan, setDraftPlan] = useState("");
   const [draftDate, setDraftDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [draftRoutinePeriod, setDraftRoutinePeriod] = useState("");
   const [savingObs, setSavingObs] = useState(false);
   const [obsError, setObsError] = useState<string | null>(null);
   const [aiFillingObs, setAiFillingObs] = useState(false);
@@ -325,6 +351,7 @@ export default function OutcomeWorkspace({
         { domainName, outcomeCode, outcomeDescription }
       );
       setDraftFields(result);
+      if (result.routine_period) setDraftRoutinePeriod(result.routine_period);
     } catch (e) {
       setAiFillObsError(e instanceof Error ? e.message : "Алдаа гарлаа");
     } finally {
@@ -376,6 +403,7 @@ export default function OutcomeWorkspace({
       fd.set("domain_id", domainId);
       fd.set("outcome_id", outcomeId);
       fd.set("observed_on", draftDate);
+      fd.set("routine_period", draftRoutinePeriod);
       fd.set("note", draftFields.note);
       fd.set("observed_fact", draftFields.observed_fact);
       fd.set("development_direction", draftFields.development_direction);
@@ -389,6 +417,7 @@ export default function OutcomeWorkspace({
       await createAction(fd);
       setDraftFields(emptyObservationFields());
       setDraftMedia([]);
+      setDraftRoutinePeriod("");
       await load();
     } catch (e) {
       setObsError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -600,12 +629,26 @@ export default function OutcomeWorkspace({
               </div>
               {aiFillObsError && <p className="mt-1 text-xs text-red-600">{aiFillObsError}</p>}
 
-              <input
-                type="date"
-                value={draftDate}
-                onChange={(e) => setDraftDate(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-              />
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  value={draftDate}
+                  onChange={(e) => setDraftDate(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                />
+                <select
+                  value={draftRoutinePeriod}
+                  onChange={(e) => setDraftRoutinePeriod(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                >
+                  <option value="">Өдрийн дэглэмийн цаг...</option>
+                  {ROUTINE_PERIODS.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               <div className="mt-2">
                 <label className="block text-xs font-semibold text-indigo-700">

@@ -142,6 +142,7 @@ create table if not exists public.observations (
   domain_id uuid not null references public.learning_domains (id),
   teacher_id uuid not null references public.profiles (id) on delete cascade,
   observed_on date not null default current_date,
+  routine_period text,          -- өдрийн дэглэмийн цагийн хэсэг (тойргийн цаг, зугаалга гэх мэт)
   level smallint check (level between 1 and 4),
   observed_fact text,           -- А. Ажиглагдсан баримт
   development_direction text,   -- Б. Хөгжлийн чиглэл

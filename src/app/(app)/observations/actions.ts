@@ -98,6 +98,7 @@ export async function createObservation(formData: FormData) {
   const levelRaw = String(formData.get("level") || "");
   const level = levelRaw ? Number(levelRaw) : null;
   const observed_on = String(formData.get("observed_on") || new Date().toISOString().slice(0, 10));
+  const routine_period = String(formData.get("routine_period") || "").trim();
   const note = String(formData.get("note") || "").trim();
   const observed_fact = String(formData.get("observed_fact") || "").trim();
   const development_direction = String(formData.get("development_direction") || "").trim();
@@ -128,6 +129,7 @@ export async function createObservation(formData: FormData) {
     outcome_id,
     teacher_id: user.id,
     observed_on,
+    routine_period: routine_period || null,
     level,
     note: note || null,
     observed_fact: observed_fact || null,
@@ -226,7 +228,8 @@ export async function updateObservation(
   id: string,
   fields: ObservationFields,
   media: { url: string; type: "image" | "video" }[],
-  observedOn: string
+  observedOn: string,
+  routinePeriod: string
 ) {
   const supabase = await createClient();
   const {
@@ -247,6 +250,7 @@ export async function updateObservation(
       next_action: fields.next_action.trim() || null,
       methodology_note: fields.methodology_note.trim() || null,
       observed_on: observedOn,
+      routine_period: routinePeriod.trim() || null,
     })
     .eq("id", id)
     .select("child_id, outcome_id")
@@ -371,6 +375,7 @@ export async function createObservationsFromRecordedActivity(
         outcome_id: t.outcomeId,
         teacher_id: user.id,
         observed_on: observedOn,
+        routine_period: fields.routine_period || null,
         level: null,
         note: fields.note || null,
         observed_fact: fields.observed_fact || null,

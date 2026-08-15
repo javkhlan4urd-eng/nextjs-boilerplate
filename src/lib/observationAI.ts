@@ -1,3 +1,5 @@
+import { ROUTINE_PERIODS } from "@/types/database";
+
 export interface ObservationAIFields {
   observed_fact: string;
   development_direction: string;
@@ -6,6 +8,7 @@ export interface ObservationAIFields {
   teacher_conclusion: string;
   next_action: string;
   methodology_note: string;
+  routine_period: string;
 }
 
 const GEMINI_ENDPOINT =
@@ -57,9 +60,11 @@ export function buildObservationPrompt({
     ? `${mediaWord === "бичлэг" ? "Бичлэгээс" : "Зургаас"} шууд харагдахгүй зүйлийг (жишээ нь хүүхдийн яриа) боломжит, түгээмэл жишээ маягаар бич, эсвэл товч орхиж болно.`
     : "Хүүхдийн өөрийн тайлбар, яриаг боломжит, түгээмэл жишээ маягаар бич.";
 
+  const periodOptions = ROUTINE_PERIODS.join(", ");
+
   return `Та Сургуулийн өмнөх боловсролын (СӨБ) цэцэрлэгийн туслах багш. ${intro.join(" ")} ${outcomeContext} Тэмдэглэлдээ хүүхдийн нэрийг зохиож бичихгүй байх — зөвхөн "хүүхэд" гэж дурдана уу.
 
-Даалгавар: Дараах 7 хэсгийг СӨБ-ийн ажиглалтын стандартын дагуу, монгол хэлээр, зөв бичгийн дүрмийг баримтлан, объектив бөгөөд тодорхой бичнэ үү. ${unseenHint} Хариултаа яг доорх форматаар, 7 тэмдэглэгээгээр тусад нь бич (тэмдэглэгээ бүрийн дараа 1-2 өгүүлбэр):
+Даалгавар: Дараах 8 хэсгийг СӨБ-ийн ажиглалтын стандартын дагуу, монгол хэлээр, зөв бичгийн дүрмийг баримтлан, объектив бөгөөд тодорхой бичнэ үү. ${unseenHint} Хариултаа яг доорх форматаар, 8 тэмдэглэгээгээр тусад нь бич (тэмдэглэгээ бүрийн дараа 1-2 өгүүлбэр):
 
 БАРИМТ: (Ажиглагдсан баримт — хүүхэд юу хийж байгаа, ямар орчинд байгаа бодит байдал)
 ЧИГЛЭЛ: (Хөгжлийн чиглэл — энэ үйлдлээр ямар чадвар хөгжиж байгаа нь)
@@ -67,17 +72,23 @@ export function buildObservationPrompt({
 ТЭМДЭГЛЭЛ: (Ажиглалтын тэмдэглэл — хүүхдийн өөрийн тайлбар, яриа байж болзошгүй зүйл; эсвэл юу хийж буйгаа товч дүрсэл)
 ДҮГНЭЛТ: (Багшийн дүгнэлт — тухайн ажиглалтаар ажиглагдсан хөгжлийн түвшин)
 ЦААШИД: (Цаашдын үйл ажиллагаа — багшийн үзүүлэх дэмжлэг)
-АРГАЗҮЙ: (Арга зүйн санал — арга зүйд тусгах санаа)`;
+АРГАЗҮЙ: (Арга зүйн санал — арга зүйд тусгах санаа)
+ЦАГ: (Дээрх агуулгад үндэслэн, өдрийн дэглэмийн аль цагийн хэсэгт хамгийн тохиромжтойг дараах жагсаалтаас яг үг үсгээр нь сонгож бич, өөр юу ч нэмэлт бичихгүй: ${periodOptions})`;
 }
 
 export function extractObservationFields(text: string): ObservationAIFields {
-  const keys = ["БАРИМТ", "ЧИГЛЭЛ", "ГҮЙЦЭТГЭЛ", "ТЭМДЭГЛЭЛ", "ДҮГНЭЛТ", "ЦААШИД", "АРГАЗҮЙ"];
+  const keys = ["БАРИМТ", "ЧИГЛЭЛ", "ГҮЙЦЭТГЭЛ", "ТЭМДЭГЛЭЛ", "ДҮГНЭЛТ", "ЦААШИД", "АРГАЗҮЙ", "ЦАГ"];
   function extractSection(key: string, nextKeys: string[]) {
     const nextPattern = nextKeys.length > 0 ? `(?:${nextKeys.join("|")}):|$` : "$";
     const re = new RegExp(`${key}:\\s*([\\s\\S]*?)(?:${nextPattern})`, "i");
     const m = text.match(re);
     return m?.[1]?.trim() || "";
   }
+  const rawPeriod = extractSection(keys[7], []);
+  const routine_period = (ROUTINE_PERIODS as readonly string[]).find(
+    (p) => p.toLowerCase() === rawPeriod.toLowerCase()
+  ) ?? "";
+
   return {
     observed_fact: extractSection(keys[0], keys.slice(1)),
     development_direction: extractSection(keys[1], keys.slice(2)),
@@ -85,7 +96,8 @@ export function extractObservationFields(text: string): ObservationAIFields {
     note: extractSection(keys[3], keys.slice(4)),
     teacher_conclusion: extractSection(keys[4], keys.slice(5)),
     next_action: extractSection(keys[5], keys.slice(6)),
-    methodology_note: extractSection(keys[6], []),
+    methodology_note: extractSection(keys[6], keys.slice(7)),
+    routine_period,
   };
 }
 

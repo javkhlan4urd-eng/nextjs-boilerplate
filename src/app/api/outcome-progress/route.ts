@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const { data: rows, error } = await supabase
     .from("observations")
     .select(
-      "id, observed_on, note, level, observed_fact, development_direction, child_performance, teacher_conclusion, next_action, methodology_note"
+      "id, observed_on, routine_period, note, level, observed_fact, development_direction, child_performance, teacher_conclusion, next_action, methodology_note"
     )
     .eq("child_id", childId)
     .eq("outcome_id", outcomeId)
@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
   const observations = (rows ?? []).map((r) => ({
     id: r.id,
     observed_on: r.observed_on,
+    routine_period: r.routine_period,
     note: r.note,
     level: r.level,
     observed_fact: r.observed_fact,
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
     const { data: relRows } = await supabase
       .from("observations")
       .select(
-        "id, outcome_id, observed_on, note, level, observed_fact, development_direction, child_performance, teacher_conclusion, next_action, methodology_note"
+        "id, outcome_id, observed_on, routine_period, note, level, observed_fact, development_direction, child_performance, teacher_conclusion, next_action, methodology_note"
       )
       .eq("child_id", childId)
       .in("outcome_id", relatedOutcomeIds)
@@ -136,6 +137,7 @@ export async function GET(request: NextRequest) {
       arr.push({
         id: r.id,
         observed_on: r.observed_on,
+        routine_period: r.routine_period,
         note: r.note,
         level: r.level,
         observed_fact: r.observed_fact,
