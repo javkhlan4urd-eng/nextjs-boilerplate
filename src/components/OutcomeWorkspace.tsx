@@ -33,6 +33,7 @@ function ObservationEditCard({
 }) {
   const [note, setNote] = useState(obs.note ?? "");
   const [level, setLevel] = useState(obs.level);
+  const [observedOn, setObservedOn] = useState(obs.observed_on);
   const [media, setMedia] = useState<UploadedFile[]>(
     obs.media.map((m) => ({ url: m.url, type: m.type as "image" | "video" }))
   );
@@ -43,7 +44,7 @@ function ObservationEditCard({
     setError(null);
     setSaving(true);
     try {
-      await updateObservation(obs.id, note, level, media);
+      await updateObservation(obs.id, note, level, media, observedOn);
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -55,6 +56,12 @@ function ObservationEditCard({
   return (
     <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/40 p-4">
       <span className="text-xs font-semibold text-amber-600">Засварлаж байна</span>
+      <input
+        type="date"
+        value={observedOn}
+        onChange={(e) => setObservedOn(e.target.value)}
+        className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+      />
       <div className="mt-2 grid grid-cols-2 gap-1.5">
         {[1, 2, 3, 4].map((lv) => (
           <button

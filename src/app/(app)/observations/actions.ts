@@ -179,7 +179,8 @@ export async function updateObservation(
   id: string,
   note: string,
   level: number,
-  media: { url: string; type: "image" | "video" }[]
+  media: { url: string; type: "image" | "video" }[],
+  observedOn: string
 ) {
   const supabase = await createClient();
   const {
@@ -188,10 +189,11 @@ export async function updateObservation(
   if (!user) throw new Error("Нэвтрээгүй байна");
 
   if (!level || level < 1 || level > 4) throw new Error("Түвшинг сонгоно уу");
+  if (!observedOn) throw new Error("Огноог сонгоно уу");
 
   const { data: obs, error } = await supabase
     .from("observations")
-    .update({ note: note.trim() || null, level })
+    .update({ note: note.trim() || null, level, observed_on: observedOn })
     .eq("id", id)
     .select("child_id, outcome_id")
     .single();
