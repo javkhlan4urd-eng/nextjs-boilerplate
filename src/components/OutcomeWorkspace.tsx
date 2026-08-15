@@ -6,7 +6,7 @@ import {
   updateOutcomeConclusion,
   updateObservation,
   generateOutcomeAssessmentNow,
-  createObservationsFromPlan,
+  createObservationsFromRecordedActivity,
   type ObservationFields,
 } from "@/app/(app)/observations/actions";
 import SevenFieldsEditor, { emptyObservationFields, analyzeObservation } from "./SevenFieldsEditor";
@@ -37,6 +37,19 @@ interface RelatedOutcome {
 
 interface RelatedObsGroup extends RelatedOutcome {
   observations: ObsRow[];
+}
+
+function buildRecordedActivitySummary(observations: ObsRow[]): string {
+  return observations
+    .map((o, i) => {
+      const parts = [o.observed_fact, o.child_performance, o.note].filter(
+        (p): p is string => !!p && p.trim().length > 0
+      );
+      if (parts.length === 0) return null;
+      return `Ажиглалт ${i + 1}: ${parts.join(" ")}`;
+    })
+    .filter((s): s is string => s !== null)
+    .join("\n");
 }
 
 interface ProgressData {
@@ -320,14 +333,16 @@ export default function OutcomeWorkspace({
   }
 
   async function writeRelatedFromPlan() {
-    if (!data || !draftPlan.trim()) return;
+    if (!data) return;
+    const recordedActivity = buildRecordedActivitySummary(data.observations);
+    if (!recordedActivity.trim()) return;
     setWritingRelated(true);
     setWriteRelatedError(null);
     setWriteRelatedResult(null);
     try {
-      const { created, failed } = await createObservationsFromPlan(
+      const { created, failed } = await createObservationsFromRecordedActivity(
         childId,
-        draftPlan,
+        recordedActivity,
         draftDate,
         stage,
         data.related.map((r) => ({
@@ -408,6 +423,7 @@ export default function OutcomeWorkspace({
   }
 
   const hasDraftMedia = draftMedia.length > 0;
+  const hasRecordedActivity = data ? buildRecordedActivitySummary(data.observations).trim().length > 0 : false;
 
   return (
     <div className="space-y-5">
@@ -452,26 +468,27 @@ export default function OutcomeWorkspace({
             <button
               type="button"
               onClick={writeRelatedFromPlan}
-              disabled={writingRelated || !draftPlan.trim()}
+              disabled={writingRelated || !hasRecordedActivity}
               title={
-                !draftPlan.trim()
-                  ? "Доорх шинэ ажиглалтын \"Үйл ажиллагааны төлөвлөлт\" талбарт төлөвлөлтөө бичнэ үү"
+                !hasRecordedActivity
+                  ? "Эхлээд энэ СҮД-д дор хаяж нэг ажиглалт бичиж хадгална уу"
                   : ""
               }
               className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-violet-600 shadow-sm ring-1 ring-violet-200 hover:bg-violet-50 disabled:cursor-default disabled:opacity-50"
             >
               {writingRelated
                 ? `🤖 ${data.related.length} СҮД-д бичиж байна...`
-                : `🤖 Энэ төлөвлөлтөөр холбоотой ${data.related.length} СҮД-д мөн ажиглалт бичих`}
+                : `🤖 Бичигдсэн ажиглалтад үндэслэн холбоотой ${data.related.length} СҮД-д мөн ажиглалт бичих`}
             </button>
             <p className="mt-1 text-xs text-violet-700/70">
-              AI төлөвлөлтөд үндэслэн холбоотой СҮД бүрт ажиглалт автоматаар бичиж, шууд хадгална.
+              Энэ СҮД-д аль хэдийн бичигдсэн бодит ажиглалтын тэмдэглэлд (төлөвлөлт биш) үндэслэн, AI
+              холбоотой СҮД бүрт мөн адил үйл ажиллагааг өөр өнцгөөс тодруулан бичиж, шууд хадгална.
               Дараа нь &quot;Холбоотой СҮД дэх ажиглалтууд&quot; хэсэгт засаж болно.
             </p>
-            {!draftPlan.trim() && (
+            {!hasRecordedActivity && (
               <p className="mt-1 text-xs font-medium text-amber-600">
-                ⚠️ Идэвхжүүлэхийн тулд доорх шинэ ажиглалтын &quot;Үйл ажиллагааны төлөвлөлт&quot;
-                талбарт төлөвлөлтөө бичнэ үү.
+                ⚠️ Идэвхжүүлэхийн тулд эхлээд энэ СҮД-д дор хаяж нэг ажиглалт (Ажиглалт 1, 2, 3...)
+                бичиж хадгална уу.
               </p>
             )}
             {writeRelatedResult && <p className="mt-1 text-xs text-emerald-700">{writeRelatedResult}</p>}
