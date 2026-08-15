@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { LEVEL_LABELS } from "@/types/database";
 import { domainColor, LEVEL_STYLES } from "@/lib/colors";
 import DeleteObservationButton from "@/components/DeleteObservationButton";
+import { formatChildName } from "@/lib/childName";
 
 export default async function BaselineAssessmentPage({
   searchParams,
@@ -89,14 +90,13 @@ export default async function BaselineAssessmentPage({
             const domainName = (o as unknown as { learning_domains: { name: string } })
               .learning_domains?.name;
             const dc = domainColor(domainName ?? "");
-            const lv = LEVEL_STYLES[o.level];
+            const lv = o.level ? LEVEL_STYLES[o.level] : null;
             return (
               <div key={o.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link href={`/children/${c.id}`} className="font-medium text-slate-900 hover:text-indigo-700">
-                      {c.last_name ? `${c.last_name} ` : ""}
-                      {c.first_name}
+                      {formatChildName(c.first_name, c.last_name)}
                     </Link>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${dc.bg} ${dc.text}`}>
                       {domainName}
@@ -104,9 +104,11 @@ export default async function BaselineAssessmentPage({
                     <span className="text-xs text-slate-500">{o.observed_on}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${lv.bg} ${lv.text}`}>
-                      {LEVEL_LABELS[o.level]}
-                    </span>
+                    {o.level && lv && (
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${lv.bg} ${lv.text}`}>
+                        {LEVEL_LABELS[o.level]}
+                      </span>
+                    )}
                     <DeleteObservationButton id={o.id} childId={c.id} />
                   </div>
                 </div>

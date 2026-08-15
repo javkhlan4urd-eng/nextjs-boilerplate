@@ -35,7 +35,7 @@ export default async function ChildPage({
       <div className="mt-6 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-slate-900">Ажиглалтын түүх</h2>
         <Link
-          href={`/observations/new?child=${id}`}
+          href={`/assessment/yavts/new?child=${id}`}
           className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95"
         >
           + Ажиглалт нэмэх
@@ -48,7 +48,7 @@ export default async function ChildPage({
             const domainName = (o as unknown as { learning_domains: { name: string } })
               .learning_domains?.name;
             const dc = domainColor(domainName ?? "");
-            const lv = LEVEL_STYLES[o.level];
+            const lv = o.level ? LEVEL_STYLES[o.level] : null;
             return (
             <div key={o.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -58,9 +58,11 @@ export default async function ChildPage({
                   </span>
                   <span className="text-xs text-slate-500">{o.observed_on}</span>
                 </div>
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${lv.bg} ${lv.text}`}>
-                  {LEVEL_LABELS[o.level]}
-                </span>
+                {o.level && lv && (
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${lv.bg} ${lv.text}`}>
+                    {LEVEL_LABELS[o.level]}
+                  </span>
+                )}
               </div>
               {o.note && <p className="mt-2 text-sm text-slate-700">{o.note}</p>}
               {(o as unknown as { observation_media: { id: string; file_url: string; media_type: string }[] })

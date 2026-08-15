@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { formatChildName } from "@/lib/childName";
 
 function calcAge(birthDate: string | null) {
   if (!birthDate) return null;
@@ -111,8 +112,7 @@ export default async function ChildrenPage({
               )}
               <div>
                 <p className="font-medium text-slate-900">
-                  {c.last_name ? `${c.last_name} ` : ""}
-                  {c.first_name}
+                  {formatChildName(c.first_name, c.last_name)}
                 </p>
                 <p className="text-sm text-slate-500">
                   {(c as unknown as { groups: { name: string } }).groups?.name}

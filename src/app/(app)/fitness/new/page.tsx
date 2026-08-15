@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createFitnessTest } from "../actions";
 import FitnessForm from "@/components/FitnessForm";
+import { formatChildName } from "@/lib/childName";
 
 export default async function NewFitnessTestPage({
   searchParams,
@@ -25,7 +26,7 @@ export default async function NewFitnessTestPage({
 
   const childOptions = (children ?? []).map((c) => ({
     id: c.id,
-    label: `${c.last_name ? c.last_name + " " : ""}${c.first_name} · ${
+    label: `${formatChildName(c.first_name, c.last_name)} · ${
       (c as unknown as { groups: { name: string } }).groups?.name
     }`,
     birthDate: c.birth_date,

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createObservation } from "../../../observations/actions";
 import ObservationForm from "@/components/ObservationForm";
+import { formatChildName } from "@/lib/childName";
 
 export default async function NewBaselineAssessmentPage({
   searchParams,
@@ -37,7 +38,7 @@ export default async function NewBaselineAssessmentPage({
     const g = (c as unknown as { groups: { name: string; level: number | null } }).groups;
     return {
       id: c.id,
-      label: `${c.last_name ? c.last_name + " " : ""}${c.first_name} · ${g?.name}`,
+      label: `${formatChildName(c.first_name, c.last_name)} · ${g?.name}`,
       groupLevel: g?.level ?? null,
     };
   });

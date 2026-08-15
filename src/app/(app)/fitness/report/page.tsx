@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { avgByTest, levelDistribution, latestPerChild, type FitnessRow } from "@/lib/fitnessAnalysis";
 import { TestAverageBar, LevelDistributionBar } from "@/components/FitnessCharts";
 import PrintButton from "@/components/PrintButton";
+import { formatChildName } from "@/lib/childName";
 
 export default async function FitnessReportPage({
   searchParams,
@@ -166,8 +167,7 @@ export default async function FitnessReportPage({
                   {latestRows.map((r) => (
                     <tr key={r.child_id} className="border-b border-slate-100">
                       <td className="py-2 pr-3 font-medium text-slate-800">
-                        {r.children.last_name ? `${r.children.last_name} ` : ""}
-                        {r.children.first_name}
+                        {formatChildName(r.children.first_name, r.children.last_name)}
                       </td>
                       <td className="px-2 py-2 text-slate-600">{r.children.groups?.name}</td>
                       <td className="px-2 py-2 text-center text-slate-500">{r.tested_on}</td>

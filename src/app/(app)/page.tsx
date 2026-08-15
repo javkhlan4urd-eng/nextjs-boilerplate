@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { LEVEL_LABELS } from "@/types/database";
 import { domainColor, LEVEL_STYLES } from "@/lib/colors";
+import { formatChildName } from "@/lib/childName";
 
 const WEEKDAYS = ["Ням", "Дав", "Мяг", "Лха", "Пүр", "Баа", "Бям"];
 
@@ -61,12 +62,12 @@ export default async function HomePage() {
   const stats = [
     { label: "Бүлэг", value: groupCount ?? 0, href: "/groups", from: "from-indigo-500", to: "to-violet-500", icon: "🏫" },
     { label: "Хүүхэд", value: childCount ?? 0, href: "/children", from: "from-teal-500", to: "to-emerald-500", icon: "🧒" },
-    { label: "Энэ сарын ажиглалт", value: obsMonthCount ?? 0, href: "/observations", from: "from-amber-400", to: "to-orange-500", icon: "📝" },
+    { label: "Энэ сарын ажиглалт", value: obsMonthCount ?? 0, href: "/assessment/yavts", from: "from-amber-400", to: "to-orange-500", icon: "📝" },
     { label: "Биеийн тамирын сорил", value: fitnessCount ?? 0, href: "/fitness", from: "from-rose-500", to: "to-pink-500", icon: "🏃" },
   ];
 
   const quickActions = [
-    { label: "Ажиглалт нэмэх", href: "/observations/new", icon: "📝" },
+    { label: "Ажиглалт нэмэх", href: "/assessment/yavts/new", icon: "📝" },
     { label: "Хүүхэд нэмэх", href: "/children/new", icon: "🧒" },
     { label: "Сорил нэмэх", href: "/fitness/new", icon: "🏃" },
     { label: "Анализ харах", href: "/analysis", icon: "📊" },
@@ -113,7 +114,7 @@ export default async function HomePage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-slate-900">Сүүлийн ажиглалтууд</h2>
-          <Link href="/observations" className="text-sm font-medium text-indigo-600 hover:underline">
+          <Link href="/assessment/yavts" className="text-sm font-medium text-indigo-600 hover:underline">
             Бүгдийг харах →
           </Link>
         </div>
@@ -126,7 +127,7 @@ export default async function HomePage() {
               const domainName = (o as unknown as { learning_domains: { name: string } })
                 .learning_domains?.name;
               const dc = domainColor(domainName ?? "");
-              const lv = LEVEL_STYLES[o.level];
+              const lv = o.level ? LEVEL_STYLES[o.level] : null;
               return (
                 <Link
                   key={o.id}
@@ -135,17 +136,18 @@ export default async function HomePage() {
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-slate-900">
-                      {c.last_name ? `${c.last_name} ` : ""}
-                      {c.first_name}
+                      {formatChildName(c.first_name, c.last_name)}
                     </span>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${dc.bg} ${dc.text}`}>
                       {domainName}
                     </span>
                     <span className="text-xs text-slate-500">{o.observed_on}</span>
                   </div>
-                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${lv.bg} ${lv.text}`}>
-                    {LEVEL_LABELS[o.level]}
-                  </span>
+                  {o.level && lv && (
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${lv.bg} ${lv.text}`}>
+                      {LEVEL_LABELS[o.level]}
+                    </span>
+                  )}
                 </Link>
               );
             })

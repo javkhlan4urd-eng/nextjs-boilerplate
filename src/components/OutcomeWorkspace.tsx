@@ -10,7 +10,7 @@ interface ObsRow {
   id: string;
   observed_on: string;
   note: string | null;
-  level: number;
+  level: number | null;
   media: { url: string; type: string }[];
 }
 
@@ -20,6 +20,7 @@ interface ProgressData {
   threshold: number;
   conclusion: string | null;
   nextSteps: string | null;
+  level: number | null;
 }
 
 function ObservationEditCard({
@@ -32,7 +33,6 @@ function ObservationEditCard({
   onCancel: () => void;
 }) {
   const [note, setNote] = useState(obs.note ?? "");
-  const [level, setLevel] = useState(obs.level);
   const [observedOn, setObservedOn] = useState(obs.observed_on);
   const [media, setMedia] = useState<UploadedFile[]>(
     obs.media.map((m) => ({ url: m.url, type: m.type as "image" | "video" }))
@@ -44,7 +44,7 @@ function ObservationEditCard({
     setError(null);
     setSaving(true);
     try {
-      await updateObservation(obs.id, note, level, media, observedOn);
+      await updateObservation(obs.id, note, media, observedOn);
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -62,22 +62,6 @@ function ObservationEditCard({
         onChange={(e) => setObservedOn(e.target.value)}
         className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
       />
-      <div className="mt-2 grid grid-cols-2 gap-1.5">
-        {[1, 2, 3, 4].map((lv) => (
-          <button
-            key={lv}
-            type="button"
-            onClick={() => setLevel(lv)}
-            className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
-              level === lv
-                ? `border-transparent text-white shadow-sm ${LEVEL_STYLES[lv].solid}`
-                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            {LEVEL_LABELS[lv]}
-          </button>
-        ))}
-      </div>
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value)}
@@ -140,7 +124,6 @@ export default function OutcomeWorkspace({
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [draftNote, setDraftNote] = useState("");
-  const [draftLevel, setDraftLevel] = useState<number | null>(null);
   const [draftMedia, setDraftMedia] = useState<UploadedFile[]>([]);
   const [draftDate, setDraftDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [savingObs, setSavingObs] = useState(false);
@@ -148,6 +131,7 @@ export default function OutcomeWorkspace({
 
   const [conclusionDraft, setConclusionDraft] = useState("");
   const [nextStepsDraft, setNextStepsDraft] = useState("");
+  const [assessedLevel, setAssessedLevel] = useState<number | null>(null);
   const [savingConclusion, setSavingConclusion] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -162,6 +146,7 @@ export default function OutcomeWorkspace({
         setData(json);
         setConclusionDraft(json.conclusion ?? "");
         setNextStepsDraft(json.nextSteps ?? "");
+        setAssessedLevel(json.level ?? null);
       }
     } finally {
       setLoading(false);
@@ -174,10 +159,6 @@ export default function OutcomeWorkspace({
 
   async function saveObservation() {
     setObsError(null);
-    if (!draftLevel) {
-      setObsError("Хөгжлийн түвшинг сонгоно уу");
-      return;
-    }
     setSavingObs(true);
     try {
       const fd = new FormData();
@@ -185,7 +166,6 @@ export default function OutcomeWorkspace({
       fd.set("child_id", childId);
       fd.set("domain_id", domainId);
       fd.set("outcome_id", outcomeId);
-      fd.set("level", String(draftLevel));
       fd.set("observed_on", draftDate);
       fd.set("note", draftNote);
       if (stage) fd.set("stage", stage);
@@ -193,7 +173,6 @@ export default function OutcomeWorkspace({
       fd.set("no_redirect", "1");
       await createAction(fd);
       setDraftNote("");
-      setDraftLevel(null);
       setDraftMedia([]);
       await load();
     } catch (e) {
@@ -206,7 +185,7 @@ export default function OutcomeWorkspace({
   async function saveConclusion() {
     setSavingConclusion(true);
     try {
-      await updateOutcomeConclusion(childId, outcomeId, conclusionDraft, nextStepsDraft);
+      await updateOutcomeConclusion(childId, outcomeId, conclusionDraft, nextStepsDraft, assessedLevel);
       setSavedNotice(true);
       setTimeout(() => setSavedNotice(false), 2000);
     } finally {
@@ -227,12 +206,6 @@ export default function OutcomeWorkspace({
       setAiGenerating(false);
     }
   }
-
-  const finalLevel = (() => {
-    if (!data || data.observations.length === 0) return null;
-    const avg = data.observations.reduce((s, o) => s + o.level, 0) / data.observations.length;
-    return Math.min(4, Math.max(1, Math.round(avg)));
-  })();
 
   return (
     <div className="space-y-5">
@@ -271,18 +244,13 @@ export default function OutcomeWorkspace({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-slate-400">Ажиглалт {i + 1}</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${LEVEL_STYLES[o.level].bg} ${LEVEL_STYLES[o.level].text}`}>
-                        {LEVEL_LABELS[o.level]}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(o.id)}
-                        className="text-xs font-medium text-indigo-600 hover:underline"
-                      >
-                        Засах
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingId(o.id)}
+                      className="text-xs font-medium text-indigo-600 hover:underline"
+                    >
+                      Засах
+                    </button>
                   </div>
                   {o.media.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -313,23 +281,6 @@ export default function OutcomeWorkspace({
                 onChange={(e) => setDraftDate(e.target.value)}
                 className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
               />
-
-              <div className="mt-2 grid grid-cols-2 gap-1.5">
-                {[1, 2, 3, 4].map((lv) => (
-                  <button
-                    key={lv}
-                    type="button"
-                    onClick={() => setDraftLevel(lv)}
-                    className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
-                      draftLevel === lv
-                        ? `border-transparent text-white shadow-sm ${LEVEL_STYLES[lv].solid}`
-                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    {LEVEL_LABELS[lv]}
-                  </button>
-                ))}
-              </div>
 
               <textarea
                 value={draftNote}
@@ -398,6 +349,24 @@ export default function OutcomeWorkspace({
                 className="mt-2 w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm"
               />
 
+              <h4 className="mt-4 text-sm font-semibold text-slate-800">🏁 Хөгжлийн түвшин</h4>
+              <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                {[1, 2, 3, 4].map((lv) => (
+                  <button
+                    key={lv}
+                    type="button"
+                    onClick={() => setAssessedLevel(lv)}
+                    className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                      assessedLevel === lv
+                        ? `border-transparent text-white shadow-sm ${LEVEL_STYLES[lv].solid}`
+                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {LEVEL_LABELS[lv]}
+                  </button>
+                ))}
+              </div>
+
               <button
                 type="button"
                 onClick={saveConclusion}
@@ -411,17 +380,17 @@ export default function OutcomeWorkspace({
 
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <h4 className="text-sm font-semibold text-slate-800">🏁 Үнэлгээ</h4>
-              {finalLevel ? (
+              {assessedLevel ? (
                 <span
-                  className={`mt-3 inline-block rounded-full px-3 py-1.5 text-sm font-semibold ${LEVEL_STYLES[finalLevel].bg} ${LEVEL_STYLES[finalLevel].text}`}
+                  className={`mt-3 inline-block rounded-full px-3 py-1.5 text-sm font-semibold ${LEVEL_STYLES[assessedLevel].bg} ${LEVEL_STYLES[assessedLevel].text}`}
                 >
-                  {LEVEL_LABELS[finalLevel]}
+                  {LEVEL_LABELS[assessedLevel]}
                 </span>
               ) : (
-                <p className="mt-2 text-xs text-slate-400">Ажиглалт нэмэгдэх тусам автоматаар тооцогдоно.</p>
+                <p className="mt-2 text-xs text-slate-400">Дүгнэлт хэсэгт хөгжлийн түвшинг сонгоно уу.</p>
               )}
               <p className="mt-2 text-xs text-slate-400">
-                (Бичигдсэн ажиглалтуудын дундаж түвшнээс тооцогдоно)
+                (Дүгнэлт бичихдээ сонгосон эцсийн түвшин)
               </p>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { DomainCoverageBar, DomainDistributionBar } from "@/components/OutcomeCh
 import PrintButton from "@/components/PrintButton";
 import { CONCLUSION_THRESHOLD } from "@/lib/outcomeConclusion";
 import { readinessVerdict, verdictStyle } from "@/lib/readiness";
+import { formatChildName } from "@/lib/childName";
 
 export default async function OutcomeReportPage({
   searchParams,
@@ -62,11 +63,12 @@ export default async function OutcomeReportPage({
     outcome_id: string;
     conclusion: string;
     observation_count: number;
+    level: number | null;
   }[] = [];
   if (childIds.length > 0) {
     const { data } = await supabase
       .from("outcome_conclusions")
-      .select("child_id, outcome_id, conclusion, observation_count")
+      .select("child_id, outcome_id, conclusion, observation_count, level")
       .in("child_id", childIds);
     conclusions = data ?? [];
   }
@@ -101,37 +103,18 @@ export default async function OutcomeReportPage({
 
   const selectedChild = sp.child ? children.find((c) => c.id === sp.child) : null;
 
-  let avgLevelByOutcome = new Map<string, number>();
-  if (selectedChild) {
-    const { data: childObsRows } = await supabase
-      .from("observations")
-      .select("outcome_id, level")
-      .eq("child_id", selectedChild.id)
-      .not("outcome_id", "is", null);
-
-    const sums = new Map<string, { sum: number; count: number }>();
-    for (const r of childObsRows ?? []) {
-      if (!r.outcome_id) continue;
-      const entry = sums.get(r.outcome_id) ?? { sum: 0, count: 0 };
-      entry.sum += r.level;
-      entry.count += 1;
-      sums.set(r.outcome_id, entry);
-    }
-    avgLevelByOutcome = new Map(
-      Array.from(sums.entries()).map(([outcomeId, { sum, count }]) => [outcomeId, sum / count])
-    );
-  }
-
   const childOutcomesTotal = selectedChild
     ? outcomes.filter((o) => {
         const childLevel = selectedChild.groups?.level ?? null;
         return !childLevel || !o.level || o.level === childLevel;
       })
     : [];
-  const childOutcomesMastered = childOutcomesTotal.filter((o) => {
-    const avg = avgLevelByOutcome.get(o.id);
-    return avg !== undefined && (avg / 4) * 100 >= 70;
-  }).length;
+  const childOutcomesMastered = selectedChild
+    ? childOutcomesTotal.filter((o) => {
+        const level = conclusionMap.get(`${selectedChild.id}|${o.id}`)?.level;
+        return level !== null && level !== undefined && (level / 4) * 100 >= 70;
+      }).length
+    : 0;
   const childMasteryPct =
     childOutcomesTotal.length > 0
       ? Math.round((childOutcomesMastered / childOutcomesTotal.length) * 100)
@@ -181,8 +164,7 @@ export default async function OutcomeReportPage({
             <option value="">-- Зөвхөн нэгдсэн тойм --</option>
             {children.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.last_name ? `${c.last_name} ` : ""}
-                {c.first_name}
+                {formatChildName(c.first_name, c.last_name)}
               </option>
             ))}
           </select>
@@ -213,8 +195,7 @@ export default async function OutcomeReportPage({
         {selectedChild ? (
           <div className="mt-8">
             <h3 className="text-base font-semibold text-slate-900">
-              {selectedChild.last_name ? `${selectedChild.last_name} ` : ""}
-              {selectedChild.first_name} — чиглэл тус бүрийн дэлгэрэнгүй дүгнэлт
+              {formatChildName(selectedChild.first_name, selectedChild.last_name)} — чиглэл тус бүрийн дэлгэрэнгүй дүгнэлт
             </h3>
 
             <div className="mt-3 flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -249,8 +230,7 @@ export default async function OutcomeReportPage({
                     <div className="mt-3 space-y-3">
                       {domainOutcomes.map((o) => {
                         const conc = conclusionMap.get(`${selectedChild.id}|${o.id}`);
-                        const avg = avgLevelByOutcome.get(o.id);
-                        const pct = avg !== undefined ? Math.round((avg / 4) * 100) : null;
+                        const pct = conc?.level != null ? Math.round((conc.level / 4) * 100) : null;
                         const verdict = pct !== null ? readinessVerdict(pct) : null;
                         const style = verdict ? verdictStyle(verdict) : null;
                         return (
@@ -267,7 +247,7 @@ export default async function OutcomeReportPage({
                                 </span>
                               ) : (
                                 <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-400">
-                                  Ажиглалт бүртгэгдээгүй
+                                  Түвшин тодорхойлогдоогүй
                                 </span>
                               )}
                             </div>

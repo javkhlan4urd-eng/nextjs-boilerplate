@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import ReadinessChecklist from "@/components/ReadinessChecklist";
+import { formatChildName } from "@/lib/childName";
 
 export default async function ChildReadinessPage({
   params,
@@ -55,8 +56,7 @@ export default async function ChildReadinessPage({
         ← Буцах
       </Link>
       <h1 className="mt-2 text-xl font-semibold text-slate-900">
-        {child.last_name ? `${child.last_name} ` : ""}
-        {child.first_name} — Үр дүнгийн үнэлгээ
+        {formatChildName(child.first_name, child.last_name)} — Үр дүнгийн үнэлгээ
       </h1>
       <p className="mt-1 text-sm text-slate-500">
         {group?.name}

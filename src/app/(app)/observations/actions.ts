@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { generateOutcomeAssessment, CONCLUSION_THRESHOLD } from "@/lib/outcomeConclusion";
+import { formatChildName } from "@/lib/childName";
 
 export async function createObservation(formData: FormData) {
   const supabase = await createClient();
@@ -17,7 +18,8 @@ export async function createObservation(formData: FormData) {
   const domain_id = String(formData.get("domain_id"));
   const outcomeRaw = String(formData.get("outcome_id") || "");
   const outcome_id = outcomeRaw || null;
-  const level = Number(formData.get("level"));
+  const levelRaw = String(formData.get("level") || "");
+  const level = levelRaw ? Number(levelRaw) : null;
   const observed_on = String(formData.get("observed_on") || new Date().toISOString().slice(0, 10));
   const note = String(formData.get("note") || "").trim();
   const stageRaw = String(formData.get("stage") || "");
@@ -33,7 +35,8 @@ export async function createObservation(formData: FormData) {
 
   if (!child_id) throw new Error("Хүүхдийг сонгоно уу");
   if (!domain_id) throw new Error("Чиглэлийг сонгоно уу");
-  if (!level || level < 1 || level > 4) throw new Error("Түвшинг сонгоно уу");
+  if (!outcome_id && (!level || level < 1 || level > 4)) throw new Error("Түвшинг сонгоно уу");
+  if (level !== null && (level < 1 || level > 4)) throw new Error("Түвшин буруу байна");
 
   const { error } = await supabase.from("observations").insert({
     id,
@@ -58,7 +61,7 @@ export async function createObservation(formData: FormData) {
     if (mediaErr) throw new Error(mediaErr.message);
   }
 
-  revalidatePath("/observations");
+  revalidatePath("/assessment/yavts");
   revalidatePath(`/children/${child_id}`);
 
   if (outcome_id) {
@@ -91,7 +94,7 @@ export async function createObservation(formData: FormData) {
             mediaByObs.set(m.observation_id, arr);
           }
 
-          const childName = `${child.last_name ? child.last_name + " " : ""}${child.first_name}`;
+          const childName = formatChildName(child.first_name, child.last_name);
           const assessment = await generateOutcomeAssessment({
             childName,
             outcomeCode: outcome.code,
@@ -143,13 +146,16 @@ export async function updateOutcomeConclusion(
   childId: string,
   outcomeId: string,
   conclusion: string,
-  nextSteps: string
+  nextSteps: string,
+  level: number | null
 ) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Нэвтрээгүй байна");
+
+  if (level !== null && (level < 1 || level > 4)) throw new Error("Түвшин буруу байна");
 
   const { data: existing } = await supabase
     .from("outcome_conclusions")
@@ -165,6 +171,7 @@ export async function updateOutcomeConclusion(
       teacher_id: user.id,
       conclusion: conclusion.trim(),
       next_steps: nextSteps.trim() || null,
+      level,
       observation_count: existing?.observation_count ?? 0,
       generated_at: new Date().toISOString(),
     },
@@ -178,7 +185,6 @@ export async function updateOutcomeConclusion(
 export async function updateObservation(
   id: string,
   note: string,
-  level: number,
   media: { url: string; type: "image" | "video" }[],
   observedOn: string
 ) {
@@ -188,12 +194,11 @@ export async function updateObservation(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Нэвтрээгүй байна");
 
-  if (!level || level < 1 || level > 4) throw new Error("Түвшинг сонгоно уу");
   if (!observedOn) throw new Error("Огноог сонгоно уу");
 
   const { data: obs, error } = await supabase
     .from("observations")
-    .update({ note: note.trim() || null, level, observed_on: observedOn })
+    .update({ note: note.trim() || null, observed_on: observedOn })
     .eq("id", id)
     .select("child_id, outcome_id")
     .single();
@@ -206,7 +211,7 @@ export async function updateObservation(
     );
   }
 
-  revalidatePath("/observations");
+  revalidatePath("/assessment/yavts");
   if (obs?.child_id) revalidatePath(`/children/${obs.child_id}`);
 }
 
@@ -244,7 +249,7 @@ export async function generateOutcomeAssessmentNow(childId: string, outcomeId: s
     mediaByObs.set(m.observation_id, arr);
   }
 
-  const childName = `${child.last_name ? child.last_name + " " : ""}${child.first_name}`;
+  const childName = formatChildName(child.first_name, child.last_name);
   const assessment = await generateOutcomeAssessment({
     childName,
     outcomeCode: outcome.code,

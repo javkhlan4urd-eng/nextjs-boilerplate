@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import ChildForm from "./ChildForm";
 import type { Child } from "@/types/database";
 import { updateChild, deleteChild } from "@/app/(app)/children/actions";
+import { formatChildName } from "@/lib/childName";
 
 function calcAge(birthDate: string | null) {
   if (!birthDate) return null;
@@ -68,8 +69,7 @@ export default function ChildDetail({ child }: { child: Child }) {
           )}
           <div>
             <h1 className="text-lg font-semibold text-slate-900">
-              {child.last_name ? `${child.last_name} ` : ""}
-              {child.first_name}
+              {formatChildName(child.first_name, child.last_name)}
             </h1>
             <p className="text-sm text-slate-500">
               {child.gender ?? ""}

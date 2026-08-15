@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { LEVEL_LABELS } from "@/lib/fitnessCriteria";
 import DeleteFitnessButton from "@/components/DeleteFitnessButton";
+import { formatChildName } from "@/lib/childName";
 
 const LEVEL_STYLE: Record<string, { bg: string; text: string }> = {
   [LEVEL_LABELS.high]: { bg: "bg-emerald-100", text: "text-emerald-700" },
@@ -162,8 +163,7 @@ export default async function FitnessPage({
                       href={`/children/${c.id}`}
                       className="font-medium text-slate-900 hover:text-indigo-700"
                     >
-                      {c.last_name ? `${c.last_name} ` : ""}
-                      {c.first_name}
+                      {formatChildName(c.first_name, c.last_name)}
                     </Link>
                     <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
                       {c.groups?.name}

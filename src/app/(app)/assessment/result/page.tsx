@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CATEGORY_ORDER, readinessVerdict, verdictStyle } from "@/lib/readiness";
 import { CategoryAchievedBar } from "@/components/OutcomeCharts";
 import PrintButton from "@/components/PrintButton";
+import { formatChildName } from "@/lib/childName";
 
 export default async function ResultAssessmentPage({
   searchParams,
@@ -171,8 +172,7 @@ export default async function ResultAssessmentPage({
                     return (
                       <tr key={child.id} className="border-b border-slate-100">
                         <td className="py-2 pr-3 font-medium text-slate-800">
-                          {child.last_name ? `${child.last_name} ` : ""}
-                          {child.first_name}
+                          {formatChildName(child.first_name, child.last_name)}
                         </td>
                         <td className="px-2 py-2 text-center text-slate-600">{child.groups?.name}</td>
                         <td className="px-2 py-2 text-center">

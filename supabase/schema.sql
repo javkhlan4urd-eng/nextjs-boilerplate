@@ -142,7 +142,7 @@ create table if not exists public.observations (
   domain_id uuid not null references public.learning_domains (id),
   teacher_id uuid not null references public.profiles (id) on delete cascade,
   observed_on date not null default current_date,
-  level smallint not null check (level between 1 and 4),
+  level smallint check (level between 1 and 4),
   note text,
   stage text check (stage in ('garaa', 'yavts')),
   created_at timestamptz not null default now()
@@ -314,6 +314,7 @@ create table if not exists public.outcome_conclusions (
   conclusion text not null,
   observation_count int not null,
   next_steps text,
+  level smallint check (level between 1 and 4),
   generated_at timestamptz not null default now(),
   unique (child_id, outcome_id)
 );

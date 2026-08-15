@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
   const { data: conclusionRow } = await supabase
     .from("outcome_conclusions")
-    .select("conclusion, observation_count, next_steps")
+    .select("conclusion, observation_count, next_steps, level")
     .eq("child_id", childId)
     .eq("outcome_id", outcomeId)
     .maybeSingle();
@@ -67,5 +67,6 @@ export async function GET(request: NextRequest) {
     threshold: CONCLUSION_THRESHOLD,
     conclusion: conclusionRow?.conclusion ?? null,
     nextSteps: conclusionRow?.next_steps ?? null,
+    level: conclusionRow?.level ?? null,
   });
 }

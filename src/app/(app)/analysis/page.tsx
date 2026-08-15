@@ -8,6 +8,7 @@ import {
   type ObsRow,
 } from "@/lib/analysis";
 import { DomainRadar, MonthlyTrend, PeriodComparisonBar } from "@/components/AnalysisCharts";
+import { formatChildName } from "@/lib/childName";
 
 export default async function AnalysisPage({
   searchParams,
@@ -60,17 +61,20 @@ export default async function AnalysisPage({
   let obsQuery = supabase
     .from("observations")
     .select("domain_id, level, observed_on, children!inner(group_id, groups!inner(teacher_id, school_year))")
-    .eq("children.groups.teacher_id", user!.id);
+    .eq("children.groups.teacher_id", user!.id)
+    .not("level", "is", null);
   if (sp.group) obsQuery = obsQuery.eq("children.group_id", sp.group);
   if (sp.child) obsQuery = obsQuery.eq("child_id", sp.child);
   if (sp.schoolYear) obsQuery = obsQuery.eq("children.groups.school_year", sp.schoolYear);
 
   const { data: rawRows } = await obsQuery;
-  const rows: ObsRow[] = (rawRows ?? []).map((r) => ({
-    domain_id: r.domain_id,
-    level: r.level,
-    observed_on: r.observed_on,
-  }));
+  const rows: ObsRow[] = (rawRows ?? [])
+    .filter((r): r is typeof r & { level: number } => r.level !== null)
+    .map((r) => ({
+      domain_id: r.domain_id,
+      level: r.level,
+      observed_on: r.observed_on,
+    }));
   const yearRows = rows.filter((r) => new Date(r.observed_on).getFullYear() === year);
 
   const domainList = domains ?? [];
@@ -117,8 +121,7 @@ export default async function AnalysisPage({
           <option value="">Бүлгийн дундаж (бүх хүүхэд)</option>
           {children?.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.last_name ? `${c.last_name} ` : ""}
-              {c.first_name}
+              {formatChildName(c.first_name, c.last_name)}
             </option>
           ))}
         </select>

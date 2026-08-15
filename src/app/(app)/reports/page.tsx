@@ -3,6 +3,7 @@ import DomainSettings from "@/components/DomainSettings";
 import PrintButton from "@/components/PrintButton";
 import { avgByDomain, type ObsRow } from "@/lib/analysis";
 import { LEVEL_LABELS } from "@/types/database";
+import { formatChildName } from "@/lib/childName";
 
 export default async function ReportsPage({
   searchParams,
@@ -52,11 +53,13 @@ export default async function ReportsPage({
       .from("observations")
       .select("child_id, domain_id, level, observed_on")
       .in("child_id", childIds)
+      .not("level", "is", null)
       .gte("observed_on", from)
       .lte("observed_on", to);
 
     rowsByChild = new Map();
     for (const r of obsRows ?? []) {
+      if (r.level === null) continue;
       const arr = rowsByChild.get(r.child_id) ?? [];
       arr.push({ domain_id: r.domain_id, level: r.level, observed_on: r.observed_on });
       rowsByChild.set(r.child_id, arr);
@@ -92,8 +95,7 @@ export default async function ReportsPage({
             <option value="">Бүгд</option>
             {reportChildren?.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.last_name ? `${c.last_name} ` : ""}
-                {c.first_name}
+                {formatChildName(c.first_name, c.last_name)}
               </option>
             ))}
           </select>
@@ -150,8 +152,7 @@ export default async function ReportsPage({
                   return (
                     <tr key={c.id} className="border-b border-slate-100">
                       <td className="py-2 pr-3 font-medium text-slate-800">
-                        {c.last_name ? `${c.last_name} ` : ""}
-                        {c.first_name}
+                        {formatChildName(c.first_name, c.last_name)}
                       </td>
                       {avg.map((a, i) => (
                         <td key={domainList[i].id} className="px-2 py-2 text-center text-slate-700">

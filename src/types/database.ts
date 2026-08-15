@@ -50,7 +50,7 @@ export interface Observation {
   domain_id: string;
   teacher_id: string;
   observed_on: string;
-  level: 1 | 2 | 3 | 4;
+  level: 1 | 2 | 3 | 4 | null;
   note: string | null;
   created_at: string;
 }
