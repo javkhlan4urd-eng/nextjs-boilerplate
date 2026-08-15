@@ -370,6 +370,37 @@ create policy "readiness_checks_all_own" on public.readiness_checks
   for all using (auth.uid() = teacher_id)
   with check (auth.uid() = teacher_id);
 
+-- ---------------------------------------------------------------------
+-- 11. OUTCOME_CORRELATIONS (СҮД хоорондын чиглэл дундах уялдаа)
+-- ---------------------------------------------------------------------
+create table if not exists public.outcome_correlations (
+  id uuid primary key default gen_random_uuid(),
+  outcome_id uuid not null references public.learning_outcomes (id) on delete cascade,
+  related_outcome_id uuid not null references public.learning_outcomes (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (outcome_id, related_outcome_id)
+);
+
+create index if not exists outcome_correlations_outcome_idx on public.outcome_correlations (outcome_id);
+
+alter table public.outcome_correlations enable row level security;
+
+create policy "outcome_correlations_all_own" on public.outcome_correlations
+  for all using (
+    exists (
+      select 1 from public.learning_outcomes o
+      join public.learning_domains d on d.id = o.domain_id
+      where o.id = outcome_correlations.outcome_id and d.teacher_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.learning_outcomes o
+      join public.learning_domains d on d.id = o.domain_id
+      where o.id = outcome_correlations.outcome_id and d.teacher_id = auth.uid()
+    )
+  );
+
 -- =====================================================================
 -- Дуусав. Дараа нь Supabase Dashboard -> Project Settings -> API
 -- хуудаснаас Project URL болон anon public key-г аваад .env.local-д тохируулна.

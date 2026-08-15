@@ -61,6 +61,38 @@ export async function GET(request: NextRequest) {
     .eq("outcome_id", outcomeId)
     .maybeSingle();
 
+  const { data: correlationRows } = await supabase
+    .from("outcome_correlations")
+    .select(
+      "related_outcome_id, learning_outcomes!outcome_correlations_related_outcome_id_fkey(id, code, description, domain_id, learning_domains(name))"
+    )
+    .eq("outcome_id", outcomeId);
+
+  const related = (correlationRows ?? [])
+    .map((r) => {
+      const o = (
+        r as unknown as {
+          learning_outcomes: {
+            id: string;
+            code: string;
+            description: string;
+            domain_id: string;
+            learning_domains: { name: string } | null;
+          };
+        }
+      ).learning_outcomes;
+      if (!o) return null;
+      return {
+        outcomeId: o.id,
+        domainId: o.domain_id,
+        domainName: o.learning_domains?.name ?? "",
+        code: o.code,
+        description: o.description,
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null)
+    .sort((a, b) => a.domainName.localeCompare(b.domainName) || a.code.localeCompare(b.code));
+
   return NextResponse.json({
     observations,
     count: notesCount,
@@ -68,5 +100,6 @@ export async function GET(request: NextRequest) {
     conclusion: conclusionRow?.conclusion ?? null,
     nextSteps: conclusionRow?.next_steps ?? null,
     level: conclusionRow?.level ?? null,
+    related,
   });
 }

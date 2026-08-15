@@ -14,6 +14,14 @@ interface ObsRow {
   media: { url: string; type: string }[];
 }
 
+interface RelatedOutcome {
+  outcomeId: string;
+  domainId: string;
+  domainName: string;
+  code: string;
+  description: string;
+}
+
 interface ProgressData {
   observations: ObsRow[];
   count: number;
@@ -21,6 +29,7 @@ interface ProgressData {
   conclusion: string | null;
   nextSteps: string | null;
   level: number | null;
+  related: RelatedOutcome[];
 }
 
 function ObservationEditCard({
@@ -109,6 +118,7 @@ export default function OutcomeWorkspace({
   outcomeDescription,
   stage,
   createAction,
+  onJumpToOutcome,
 }: {
   childId: string;
   domainId: string;
@@ -118,6 +128,7 @@ export default function OutcomeWorkspace({
   outcomeDescription: string;
   stage?: "garaa" | "yavts";
   createAction: (formData: FormData) => Promise<void>;
+  onJumpToOutcome?: (domainId: string, outcomeId: string) => void;
 }) {
   const [data, setData] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -220,6 +231,33 @@ export default function OutcomeWorkspace({
           </p>
         )}
       </div>
+
+      {data && data.related.length > 0 && (
+        <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4">
+          <h4 className="text-sm font-semibold text-violet-800">
+            🔗 Холбоотой СҮД (бусад чиглэлүүд)
+          </h4>
+          <p className="mt-0.5 text-xs text-violet-700/80">
+            Энэ ажиглалт/үйл ажиллагаа доорх бусад чиглэлийн СҮД-тэй мөн уялдаатай (сургалтын
+            хөтөлбөрийн дагуу).
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {data.related.map((r) => (
+              <button
+                key={r.outcomeId}
+                type="button"
+                onClick={() => onJumpToOutcome?.(r.domainId, r.outcomeId)}
+                disabled={!onJumpToOutcome}
+                title={r.description}
+                className="rounded-full border border-violet-300 bg-white px-2.5 py-1 text-xs font-medium text-violet-700 shadow-sm hover:bg-violet-100 disabled:cursor-default disabled:opacity-80"
+              >
+                <span className="font-semibold">{r.code}</span>
+                <span className="ml-1 text-violet-400">· {r.domainName}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p className="text-sm text-slate-500">Ачаалж байна...</p>

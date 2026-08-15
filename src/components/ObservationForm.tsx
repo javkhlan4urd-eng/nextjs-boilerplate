@@ -145,6 +145,10 @@ export default function ObservationForm({
           outcomeDescription={selectedOutcome.description}
           stage={stage}
           createAction={action}
+          onJumpToOutcome={(newDomainId, newOutcomeId) => {
+            setDomainId(newDomainId);
+            setOutcomeId(newOutcomeId);
+          }}
         />
       ) : (
         <form
