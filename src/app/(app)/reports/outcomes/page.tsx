@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { DomainCoverageBar, DomainDistributionBar } from "@/components/OutcomeCharts";
 import PrintButton from "@/components/PrintButton";
 import { CONCLUSION_THRESHOLD } from "@/lib/outcomeConclusion";
 import { readinessVerdict, verdictStyle } from "@/lib/readiness";
 import { formatChildName } from "@/lib/childName";
+import { domainColor } from "@/lib/colors";
 
 export default async function OutcomeReportPage({
   searchParams,
@@ -93,13 +93,12 @@ export default async function OutcomeReportPage({
     return { domain: d.name, total, withConclusion };
   });
 
-  const distributionByDomain = domainList.map((d) => ({
-    domain: d.name,
-    count: conclusions.filter((c) => {
-      const o = outcomes.find((oo) => oo.id === c.outcome_id);
-      return o?.domain_id === d.id;
-    }).length,
-  }));
+  const totalPossible = coverageByDomain.reduce((sum, c) => sum + c.total, 0);
+  const totalWithConclusion = coverageByDomain.reduce((sum, c) => sum + c.withConclusion, 0);
+  const overallPct = totalPossible > 0 ? Math.round((totalWithConclusion / totalPossible) * 100) : 0;
+  const topDomain = [...coverageByDomain]
+    .filter((c) => c.total > 0)
+    .sort((a, b) => b.withConclusion / b.total - a.withConclusion / a.total)[0];
 
   const selectedChild = sp.child ? children.find((c) => c.id === sp.child) : null;
 
@@ -178,18 +177,62 @@ export default async function OutcomeReportPage({
       <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 print:border-0 print:p-0 print:shadow-none">
         <h2 className="text-lg font-semibold text-slate-900">Чиглэл тус бүрийн нэгдсэн тойм</h2>
         <p className="text-sm text-slate-500">
-          Хамрагдсан хүүхэд: {children.length} · Нийт СҮД дүгнэлт: {conclusions.length}
+          Суралцахуйн 7 чиглэлээр гарсан дүгнэлтийн ерөнхий явц.
         </p>
 
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 p-4">
-            <h3 className="text-sm font-semibold text-slate-800">Чиглэл тус бүрийн хамрах хувь</h3>
-            <DomainCoverageBar data={coverageByDomain} />
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-2xl font-bold text-slate-900">{children.length}</p>
+            <p className="text-xs text-slate-500">Хамрагдсан хүүхэд</p>
           </div>
-          <div className="rounded-xl border border-slate-200 p-4">
-            <h3 className="text-sm font-semibold text-slate-800">Гарсан дүгнэлтийн тоо (чиглэлээр)</h3>
-            <DomainDistributionBar data={distributionByDomain} />
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-2xl font-bold text-slate-900">{conclusions.length}</p>
+            <p className="text-xs text-slate-500">Нийт СҮД дүгнэлт</p>
           </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-2xl font-bold text-slate-900">
+              {overallPct}
+              <span className="text-base font-medium text-slate-400">%</span>
+            </p>
+            <p className="text-xs text-slate-500">
+              Дундаж хамрах хувь
+              {topDomain ? ` · тэргүүлэгч: ${topDomain.domain}` : ""}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          {coverageByDomain.map((c, i) => {
+            const pct = c.total > 0 ? Math.round((c.withConclusion / c.total) * 100) : 0;
+            const palette = domainColor(i);
+            return (
+              <div key={c.domain} className="rounded-xl border border-slate-200 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ background: palette.dot }}
+                    />
+                    <span className="text-sm font-medium text-slate-800">{c.domain}</span>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${palette.bg} ${palette.text}`}
+                  >
+                    {c.withConclusion} дүгнэлт гарсан
+                  </span>
+                </div>
+                <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${pct}%`, background: palette.dot }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  {pct}% хамрагдсан ({c.withConclusion}/{c.total})
+                </p>
+              </div>
+            );
+          })}
         </div>
 
         {selectedChild ? (
