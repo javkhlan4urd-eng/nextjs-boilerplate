@@ -6,9 +6,10 @@ import {
   updateOutcomeConclusion,
   updateObservation,
   generateOutcomeAssessmentNow,
+  createObservationsFromPlan,
   type ObservationFields,
 } from "@/app/(app)/observations/actions";
-import SevenFieldsEditor, { emptyObservationFields, analyzeObservationPhoto } from "./SevenFieldsEditor";
+import SevenFieldsEditor, { emptyObservationFields, analyzeObservation } from "./SevenFieldsEditor";
 import { LEVEL_LABELS, OBSERVATION_FIELDS } from "@/types/database";
 import { LEVEL_STYLES } from "@/lib/colors";
 
@@ -154,11 +155,10 @@ function ObservationEditCard({
     setAiError(null);
     setAiFilling(true);
     try {
-      const result = await analyzeObservationPhoto(firstMedia.url, {
-        domainName,
-        outcomeCode,
-        outcomeDescription,
-      });
+      const result = await analyzeObservation(
+        { mediaUrl: firstMedia.url },
+        { domainName, outcomeCode, outcomeDescription }
+      );
       setFields(result);
     } catch (e) {
       setAiError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -262,11 +262,16 @@ export default function OutcomeWorkspace({
 
   const [draftFields, setDraftFields] = useState<ObservationFields>(emptyObservationFields());
   const [draftMedia, setDraftMedia] = useState<UploadedFile[]>([]);
+  const [draftPlan, setDraftPlan] = useState("");
   const [draftDate, setDraftDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [savingObs, setSavingObs] = useState(false);
   const [obsError, setObsError] = useState<string | null>(null);
   const [aiFillingObs, setAiFillingObs] = useState(false);
   const [aiFillObsError, setAiFillObsError] = useState<string | null>(null);
+
+  const [writingRelated, setWritingRelated] = useState(false);
+  const [writeRelatedResult, setWriteRelatedResult] = useState<string | null>(null);
+  const [writeRelatedError, setWriteRelatedError] = useState<string | null>(null);
 
   const [conclusionDraft, setConclusionDraft] = useState("");
   const [nextStepsDraft, setNextStepsDraft] = useState("");
@@ -298,20 +303,51 @@ export default function OutcomeWorkspace({
 
   async function aiFillDraft() {
     const firstMedia = draftMedia.find((m) => m.type === "image") ?? draftMedia[0];
-    if (!firstMedia) return;
+    if (!firstMedia && !draftPlan.trim()) return;
     setAiFillObsError(null);
     setAiFillingObs(true);
     try {
-      const result = await analyzeObservationPhoto(firstMedia.url, {
-        domainName,
-        outcomeCode,
-        outcomeDescription,
-      });
+      const result = await analyzeObservation(
+        { mediaUrl: firstMedia?.url, planText: draftPlan },
+        { domainName, outcomeCode, outcomeDescription }
+      );
       setDraftFields(result);
     } catch (e) {
       setAiFillObsError(e instanceof Error ? e.message : "Алдаа гарлаа");
     } finally {
       setAiFillingObs(false);
+    }
+  }
+
+  async function writeRelatedFromPlan() {
+    if (!data || !draftPlan.trim()) return;
+    setWritingRelated(true);
+    setWriteRelatedError(null);
+    setWriteRelatedResult(null);
+    try {
+      const { created, failed } = await createObservationsFromPlan(
+        childId,
+        draftPlan,
+        draftDate,
+        stage,
+        data.related.map((r) => ({
+          domainId: r.domainId,
+          outcomeId: r.outcomeId,
+          domainName: r.domainName,
+          code: r.code,
+          description: r.description,
+        }))
+      );
+      setWriteRelatedResult(
+        failed > 0
+          ? `${created} СҮД-д амжилттай бичлээ, ${failed} нь амжилтгүй боллоо.`
+          : `${created} холбоотой СҮД-д ажиглалт амжилттай бичигдлээ.`
+      );
+      await load();
+    } catch (e) {
+      setWriteRelatedError(e instanceof Error ? e.message : "Алдаа гарлаа");
+    } finally {
+      setWritingRelated(false);
     }
   }
 
@@ -338,6 +374,7 @@ export default function OutcomeWorkspace({
       await createAction(fd);
       setDraftFields(emptyObservationFields());
       setDraftMedia([]);
+      setDraftPlan("");
       await load();
     } catch (e) {
       setObsError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -410,6 +447,30 @@ export default function OutcomeWorkspace({
                 <span className="ml-1 text-violet-400">· {r.domainName}</span>
               </button>
             ))}
+          </div>
+
+          <div className="mt-3 border-t border-violet-200 pt-3">
+            <button
+              type="button"
+              onClick={writeRelatedFromPlan}
+              disabled={writingRelated || !draftPlan.trim()}
+              title={
+                !draftPlan.trim()
+                  ? "Доорх шинэ ажиглалтын \"Үйл ажиллагааны төлөвлөлт\" талбарт төлөвлөлтөө бичнэ үү"
+                  : ""
+              }
+              className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-violet-600 shadow-sm ring-1 ring-violet-200 hover:bg-violet-50 disabled:cursor-default disabled:opacity-50"
+            >
+              {writingRelated
+                ? `🤖 ${data.related.length} СҮД-д бичиж байна...`
+                : `🤖 Энэ төлөвлөлтөөр холбоотой ${data.related.length} СҮД-д мөн ажиглалт бичих`}
+            </button>
+            <p className="mt-1 text-xs text-violet-700/70">
+              AI төлөвлөлтөд үндэслэн холбоотой СҮД бүрт ажиглалт автоматаар бичиж, шууд хадгална.
+              Дараа нь &quot;Холбоотой СҮД дэх ажиглалтууд&quot; хэсэгт засаж болно.
+            </p>
+            {writeRelatedResult && <p className="mt-1 text-xs text-emerald-700">{writeRelatedResult}</p>}
+            {writeRelatedError && <p className="mt-1 text-xs text-red-600">{writeRelatedError}</p>}
           </div>
         </div>
       )}
@@ -504,8 +565,12 @@ export default function OutcomeWorkspace({
                 <button
                   type="button"
                   onClick={aiFillDraft}
-                  disabled={aiFillingObs || !hasDraftMedia}
-                  title={!hasDraftMedia ? "Эхлээд зураг эсвэл бичлэг хавсаргана уу" : ""}
+                  disabled={aiFillingObs || (!hasDraftMedia && !draftPlan.trim())}
+                  title={
+                    !hasDraftMedia && !draftPlan.trim()
+                      ? "Эхлээд зураг/бичлэг хавсаргах эсвэл үйл ажиллагааны төлөвлөлт бичнэ үү"
+                      : ""
+                  }
                   className="rounded-full bg-white px-3 py-1 text-xs font-medium text-violet-600 shadow-sm ring-1 ring-violet-200 hover:bg-violet-50 disabled:opacity-50"
                 >
                   {aiFillingObs ? "🤖 Бэлдэж байна..." : "🤖 AI-аар бэлтгэх"}
@@ -519,6 +584,20 @@ export default function OutcomeWorkspace({
                 onChange={(e) => setDraftDate(e.target.value)}
                 className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
               />
+
+              <div className="mt-2">
+                <label className="block text-xs font-semibold text-indigo-700">
+                  🗓 Үйл ажиллагааны төлөвлөлт{" "}
+                  <span className="font-normal text-slate-400">(заавал биш)</span>
+                </label>
+                <textarea
+                  value={draftPlan}
+                  onChange={(e) => setDraftPlan(e.target.value)}
+                  rows={2}
+                  placeholder="Ямар үйл ажиллагаа хийхээр төлөвлөж байгаагаа бичвэл AI үүнд үндэслэн тэмдэглэлийг бэлдэнэ."
+                  className="mt-1 w-full rounded-lg border border-indigo-200 bg-white px-2 py-1.5 text-sm"
+                />
+              </div>
 
               <div className="mt-2">
                 <PhotoCapture

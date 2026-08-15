@@ -15,14 +15,14 @@ export function emptyObservationFields(): ObservationFields {
   };
 }
 
-export async function analyzeObservationPhoto(
-  mediaUrl: string,
+export async function analyzeObservation(
+  input: { mediaUrl?: string; planText?: string },
   context: { domainName?: string; outcomeCode?: string; outcomeDescription?: string }
 ): Promise<ObservationFields> {
   const res = await fetch("/api/analyze-observation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mediaUrl, ...context }),
+    body: JSON.stringify({ ...input, ...context }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "AI дүн шинжилгээ амжилтгүй боллоо");

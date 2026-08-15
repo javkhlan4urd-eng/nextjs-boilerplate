@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import PhotoCapture, { type UploadedFile } from "./PhotoCapture";
 import OutcomeWorkspace from "./OutcomeWorkspace";
-import SevenFieldsEditor, { emptyObservationFields, analyzeObservationPhoto } from "./SevenFieldsEditor";
+import SevenFieldsEditor, { emptyObservationFields, analyzeObservation } from "./SevenFieldsEditor";
 import { LEVEL_LABELS } from "@/types/database";
 import { LEVEL_STYLES } from "@/lib/colors";
 
@@ -238,9 +238,10 @@ export default function ObservationForm({
                   setAiError(null);
                   setAiFilling(true);
                   try {
-                    const result = await analyzeObservationPhoto(firstMedia.url, {
-                      domainName: selectedDomain?.name,
-                    });
+                    const result = await analyzeObservation(
+                      { mediaUrl: firstMedia.url },
+                      { domainName: selectedDomain?.name }
+                    );
                     setFields(result);
                   } catch (e) {
                     setAiError(e instanceof Error ? e.message : "Алдаа гарлаа");

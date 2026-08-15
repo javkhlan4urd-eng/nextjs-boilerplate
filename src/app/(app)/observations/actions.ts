@@ -5,6 +5,83 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { generateOutcomeAssessment, CONCLUSION_THRESHOLD } from "@/lib/outcomeConclusion";
 import { formatChildName } from "@/lib/childName";
+import { buildObservationPrompt, extractObservationFields, callGemini } from "@/lib/observationAI";
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+async function maybeAutoGenerateConclusion(
+  supabase: SupabaseServerClient,
+  teacherId: string,
+  childId: string,
+  outcomeId: string
+) {
+  try {
+    const { data: outcomeRows } = await supabase
+      .from("observations")
+      .select(
+        "id, note, observed_on, observed_fact, development_direction, child_performance, teacher_conclusion, next_action, methodology_note"
+      )
+      .eq("child_id", childId)
+      .eq("outcome_id", outcomeId)
+      .not("note", "is", null)
+      .order("observed_on", { ascending: true });
+
+    const notes = (outcomeRows ?? []).filter((r) => r.note && r.note.trim());
+    if (notes.length < CONCLUSION_THRESHOLD) return;
+
+    const [{ data: child }, { data: outcome }, { data: mediaRows }] = await Promise.all([
+      supabase.from("children").select("first_name, last_name").eq("id", childId).single(),
+      supabase.from("learning_outcomes").select("code, description").eq("id", outcomeId).single(),
+      supabase
+        .from("observation_media")
+        .select("observation_id, file_url, media_type")
+        .in("observation_id", notes.map((n) => n.id)),
+    ]);
+    if (!child || !outcome) return;
+
+    const mediaByObs = new Map<string, { url: string; type: string }[]>();
+    for (const m of mediaRows ?? []) {
+      const arr = mediaByObs.get(m.observation_id) ?? [];
+      arr.push({ url: m.file_url, type: m.media_type });
+      mediaByObs.set(m.observation_id, arr);
+    }
+
+    const childName = formatChildName(child.first_name, child.last_name);
+    const assessment = await generateOutcomeAssessment({
+      childName,
+      outcomeCode: outcome.code,
+      outcomeDescription: outcome.description,
+      notes: notes.map((n) => ({
+        observed_on: n.observed_on,
+        observed_fact: n.observed_fact,
+        development_direction: n.development_direction,
+        child_performance: n.child_performance,
+        note: n.note,
+        teacher_conclusion: n.teacher_conclusion,
+        next_action: n.next_action,
+        methodology_note: n.methodology_note,
+        media: mediaByObs.get(n.id) ?? [],
+      })),
+    });
+
+    if (assessment) {
+      await supabase.from("outcome_conclusions").upsert(
+        {
+          child_id: childId,
+          outcome_id: outcomeId,
+          teacher_id: teacherId,
+          conclusion: assessment.conclusion,
+          next_steps: assessment.nextSteps || null,
+          observation_count: notes.length,
+          generated_at: new Date().toISOString(),
+        },
+        { onConflict: "child_id,outcome_id" }
+      );
+    }
+  } catch (e) {
+    console.error("outcome conclusion generation failed:", e);
+  }
+}
 
 export async function createObservation(formData: FormData) {
   const supabase = await createClient();
@@ -77,74 +154,7 @@ export async function createObservation(formData: FormData) {
   revalidatePath(`/children/${child_id}`);
 
   if (outcome_id) {
-    try {
-      const { data: outcomeRows } = await supabase
-        .from("observations")
-        .select(
-          "id, note, observed_on, observed_fact, development_direction, child_performance, teacher_conclusion, next_action, methodology_note"
-        )
-        .eq("child_id", child_id)
-        .eq("outcome_id", outcome_id)
-        .not("note", "is", null)
-        .order("observed_on", { ascending: true });
-
-      const notes = (outcomeRows ?? []).filter((r) => r.note && r.note.trim());
-
-      if (notes.length >= CONCLUSION_THRESHOLD) {
-        const [{ data: child }, { data: outcome }, { data: mediaRows }] = await Promise.all([
-          supabase.from("children").select("first_name, last_name").eq("id", child_id).single(),
-          supabase.from("learning_outcomes").select("code, description").eq("id", outcome_id).single(),
-          supabase
-            .from("observation_media")
-            .select("observation_id, file_url, media_type")
-            .in("observation_id", notes.map((n) => n.id)),
-        ]);
-
-        if (child && outcome) {
-          const mediaByObs = new Map<string, { url: string; type: string }[]>();
-          for (const m of mediaRows ?? []) {
-            const arr = mediaByObs.get(m.observation_id) ?? [];
-            arr.push({ url: m.file_url, type: m.media_type });
-            mediaByObs.set(m.observation_id, arr);
-          }
-
-          const childName = formatChildName(child.first_name, child.last_name);
-          const assessment = await generateOutcomeAssessment({
-            childName,
-            outcomeCode: outcome.code,
-            outcomeDescription: outcome.description,
-            notes: notes.map((n) => ({
-              observed_on: n.observed_on,
-              observed_fact: n.observed_fact,
-              development_direction: n.development_direction,
-              child_performance: n.child_performance,
-              note: n.note,
-              teacher_conclusion: n.teacher_conclusion,
-              next_action: n.next_action,
-              methodology_note: n.methodology_note,
-              media: mediaByObs.get(n.id) ?? [],
-            })),
-          });
-
-          if (assessment) {
-            await supabase.from("outcome_conclusions").upsert(
-              {
-                child_id,
-                outcome_id,
-                teacher_id: user.id,
-                conclusion: assessment.conclusion,
-                next_steps: assessment.nextSteps || null,
-                observation_count: notes.length,
-                generated_at: new Date().toISOString(),
-              },
-              { onConflict: "child_id,outcome_id" }
-            );
-          }
-        }
-      }
-    } catch (e) {
-      console.error("outcome conclusion generation failed:", e);
-    }
+    await maybeAutoGenerateConclusion(supabase, user.id, child_id, outcome_id);
   }
 
   if (String(formData.get("no_redirect") || "") === "1") {
@@ -310,6 +320,81 @@ export async function generateOutcomeAssessmentNow(childId: string, outcomeId: s
   if (!assessment) throw new Error("AI дүгнэлт үүсгэж чадсангүй");
 
   return assessment;
+}
+
+export interface PlanTarget {
+  domainId: string;
+  outcomeId: string;
+  domainName: string;
+  code: string;
+  description: string;
+}
+
+export async function createObservationsFromPlan(
+  childId: string,
+  planText: string,
+  observedOn: string,
+  stage: "garaa" | "yavts" | undefined,
+  targets: PlanTarget[]
+): Promise<{ created: number; failed: number }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Нэвтрээгүй байна");
+  if (!planText.trim()) throw new Error("Үйл ажиллагааны төлөвлөлтийг бичнэ үү");
+  if (targets.length === 0) throw new Error("Холбоотой СҮД алга");
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("AI үйлчилгээ тохируулагдаагүй байна");
+
+  let created = 0;
+  let failed = 0;
+
+  for (const t of targets) {
+    try {
+      const prompt = buildObservationPrompt({
+        domainName: t.domainName,
+        outcomeCode: t.code,
+        outcomeDescription: t.description,
+        planText,
+        hasMedia: false,
+        isVideo: false,
+      });
+      const text = await callGemini(apiKey, prompt);
+      const fields = extractObservationFields(text);
+
+      const { error } = await supabase.from("observations").insert({
+        id: crypto.randomUUID(),
+        child_id: childId,
+        domain_id: t.domainId,
+        outcome_id: t.outcomeId,
+        teacher_id: user.id,
+        observed_on: observedOn,
+        level: null,
+        note: fields.note || null,
+        observed_fact: fields.observed_fact || null,
+        development_direction: fields.development_direction || null,
+        child_performance: fields.child_performance || null,
+        teacher_conclusion: fields.teacher_conclusion || null,
+        next_action: fields.next_action || null,
+        methodology_note: fields.methodology_note || null,
+        stage: stage ?? null,
+      });
+      if (error) throw new Error(error.message);
+      created += 1;
+
+      await maybeAutoGenerateConclusion(supabase, user.id, childId, t.outcomeId);
+    } catch (e) {
+      console.error("createObservationsFromPlan failed for outcome", t.outcomeId, e);
+      failed += 1;
+    }
+  }
+
+  revalidatePath("/assessment/yavts");
+  revalidatePath(`/children/${childId}`);
+
+  return { created, failed };
 }
 
 export async function deleteObservation(formData: FormData) {
