@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DomainCoverageBar, DomainDistributionBar } from "@/components/OutcomeCharts";
 import PrintButton from "@/components/PrintButton";
 import { CONCLUSION_THRESHOLD } from "@/lib/outcomeConclusion";
+import { readinessVerdict, verdictStyle } from "@/lib/readiness";
 
 export default async function OutcomeReportPage({
   searchParams,
@@ -100,6 +101,42 @@ export default async function OutcomeReportPage({
 
   const selectedChild = sp.child ? children.find((c) => c.id === sp.child) : null;
 
+  let avgLevelByOutcome = new Map<string, number>();
+  if (selectedChild) {
+    const { data: childObsRows } = await supabase
+      .from("observations")
+      .select("outcome_id, level")
+      .eq("child_id", selectedChild.id)
+      .not("outcome_id", "is", null);
+
+    const sums = new Map<string, { sum: number; count: number }>();
+    for (const r of childObsRows ?? []) {
+      if (!r.outcome_id) continue;
+      const entry = sums.get(r.outcome_id) ?? { sum: 0, count: 0 };
+      entry.sum += r.level;
+      entry.count += 1;
+      sums.set(r.outcome_id, entry);
+    }
+    avgLevelByOutcome = new Map(
+      Array.from(sums.entries()).map(([outcomeId, { sum, count }]) => [outcomeId, sum / count])
+    );
+  }
+
+  const childOutcomesTotal = selectedChild
+    ? outcomes.filter((o) => {
+        const childLevel = selectedChild.groups?.level ?? null;
+        return !childLevel || !o.level || o.level === childLevel;
+      })
+    : [];
+  const childOutcomesMastered = childOutcomesTotal.filter((o) => {
+    const avg = avgLevelByOutcome.get(o.id);
+    return avg !== undefined && (avg / 4) * 100 >= 70;
+  }).length;
+  const childMasteryPct =
+    childOutcomesTotal.length > 0
+      ? Math.round((childOutcomesMastered / childOutcomesTotal.length) * 100)
+      : 0;
+
   return (
     <div className="mx-auto max-w-5xl">
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
@@ -179,7 +216,27 @@ export default async function OutcomeReportPage({
               {selectedChild.last_name ? `${selectedChild.last_name} ` : ""}
               {selectedChild.first_name} — чиглэл тус бүрийн дэлгэрэнгүй дүгнэлт
             </h3>
-            <div className="mt-4 space-y-6">
+
+            <div className="mt-3 flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div>
+                <p className="text-2xl font-bold text-slate-900">
+                  {childOutcomesMastered}
+                  <span className="text-base font-medium text-slate-400"> / {childOutcomesTotal.length}</span>
+                </p>
+                <p className="text-xs text-slate-500">СҮД эзэмшсэн (нийт эзэмших ёстойгоос)</p>
+              </div>
+              <div className="flex-1">
+                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-teal-500"
+                    style={{ width: `${childMasteryPct}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-500">{childMasteryPct}% эзэмшсэн</p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-6">
               {domainList.map((d) => {
                 const childLevel = selectedChild.groups?.level ?? null;
                 const domainOutcomes = outcomes.filter(
@@ -192,17 +249,42 @@ export default async function OutcomeReportPage({
                     <div className="mt-3 space-y-3">
                       {domainOutcomes.map((o) => {
                         const conc = conclusionMap.get(`${selectedChild.id}|${o.id}`);
+                        const avg = avgLevelByOutcome.get(o.id);
+                        const pct = avg !== undefined ? Math.round((avg / 4) * 100) : null;
+                        const verdict = pct !== null ? readinessVerdict(pct) : null;
+                        const style = verdict ? verdictStyle(verdict) : null;
                         return (
                           <div key={o.id} className="rounded-lg bg-slate-50 p-3 text-sm">
-                            <p className="font-medium text-slate-700">
-                              {o.code}: <span className="font-normal text-slate-600">{o.description}</span>
-                            </p>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="font-medium text-slate-700">
+                                {o.code}: <span className="font-normal text-slate-600">{o.description}</span>
+                              </p>
+                              {pct !== null && style ? (
+                                <span
+                                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${style.bg} ${style.text}`}
+                                >
+                                  {pct}% · {verdict}
+                                </span>
+                              ) : (
+                                <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-400">
+                                  Ажиглалт бүртгэгдээгүй
+                                </span>
+                              )}
+                            </div>
+                            {pct !== null && (
+                              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                                <div
+                                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-teal-500"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            )}
                             {conc ? (
-                              <p className="mt-1 text-slate-800">
+                              <p className="mt-2 text-slate-800">
                                 <span className="font-semibold text-emerald-700">Дүгнэлт:</span> {conc.conclusion}
                               </p>
                             ) : (
-                              <p className="mt-1 text-xs text-slate-400">
+                              <p className="mt-2 text-xs text-slate-400">
                                 Дүгнэлт гараагүй (тэмдэглэл хараахан {CONCLUSION_THRESHOLD}-д хүрээгүй).
                               </p>
                             )}
