@@ -101,6 +101,59 @@ export async function GET(request: NextRequest) {
     .filter((r): r is NonNullable<typeof r> => r !== null)
     .sort((a, b) => a.domainName.localeCompare(b.domainName) || a.code.localeCompare(b.code));
 
+  const relatedOutcomeIds = related.map((r) => r.outcomeId);
+  type RelatedObsGroup = (typeof related)[number] & { observations: (typeof observations)[number][] };
+  let relatedObservations: RelatedObsGroup[] = [];
+
+  if (relatedOutcomeIds.length > 0) {
+    const { data: relRows } = await supabase
+      .from("observations")
+      .select(
+        "id, outcome_id, observed_on, note, level, observed_fact, development_direction, child_performance, teacher_conclusion, next_action, methodology_note"
+      )
+      .eq("child_id", childId)
+      .in("outcome_id", relatedOutcomeIds)
+      .order("observed_on", { ascending: true });
+
+    const relObsIds = (relRows ?? []).map((r) => r.id);
+    let relMediaByObs: Record<string, { url: string; type: string }[]> = {};
+    if (relObsIds.length > 0) {
+      const { data: relMediaRows } = await supabase
+        .from("observation_media")
+        .select("observation_id, file_url, media_type")
+        .in("observation_id", relObsIds);
+      relMediaByObs = {};
+      for (const m of relMediaRows ?? []) {
+        const arr = relMediaByObs[m.observation_id] ?? [];
+        arr.push({ url: m.file_url, type: m.media_type });
+        relMediaByObs[m.observation_id] = arr;
+      }
+    }
+
+    const byOutcome = new Map<string, (typeof observations)[number][]>();
+    for (const r of relRows ?? []) {
+      const arr = byOutcome.get(r.outcome_id) ?? [];
+      arr.push({
+        id: r.id,
+        observed_on: r.observed_on,
+        note: r.note,
+        level: r.level,
+        observed_fact: r.observed_fact,
+        development_direction: r.development_direction,
+        child_performance: r.child_performance,
+        teacher_conclusion: r.teacher_conclusion,
+        next_action: r.next_action,
+        methodology_note: r.methodology_note,
+        media: relMediaByObs[r.id] ?? [],
+      });
+      byOutcome.set(r.outcome_id, arr);
+    }
+
+    relatedObservations = related
+      .filter((r) => byOutcome.has(r.outcomeId))
+      .map((r) => ({ ...r, observations: byOutcome.get(r.outcomeId)! }));
+  }
+
   return NextResponse.json({
     observations,
     count: notesCount,
@@ -109,5 +162,6 @@ export async function GET(request: NextRequest) {
     nextSteps: conclusionRow?.next_steps ?? null,
     level: conclusionRow?.level ?? null,
     related,
+    relatedObservations,
   });
 }

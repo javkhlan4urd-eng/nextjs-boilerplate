@@ -34,6 +34,10 @@ interface RelatedOutcome {
   description: string;
 }
 
+interface RelatedObsGroup extends RelatedOutcome {
+  observations: ObsRow[];
+}
+
 interface ProgressData {
   observations: ObsRow[];
   count: number;
@@ -42,6 +46,7 @@ interface ProgressData {
   nextSteps: string | null;
   level: number | null;
   related: RelatedOutcome[];
+  relatedObservations: RelatedObsGroup[];
 }
 
 function ObservationReadCard({
@@ -404,6 +409,59 @@ export default function OutcomeWorkspace({
                 <span className="font-semibold">{r.code}</span>
                 <span className="ml-1 text-violet-400">· {r.domainName}</span>
               </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data && data.relatedObservations.length > 0 && (
+        <div className="rounded-2xl border border-teal-200 bg-teal-50/60 p-4">
+          <h4 className="text-sm font-semibold text-teal-800">
+            🔁 Холбоотой СҮД дэх ажиглалтууд
+          </h4>
+          <p className="mt-0.5 text-xs text-teal-700/80">
+            Энэ хүүхдийн холбоотой чиглэлийн СҮД-д бичигдсэн ажиглалтууд уялдаа бүхий тул эндээс
+            мөн харагдана.
+          </p>
+          <div className="mt-3 space-y-4">
+            {data.relatedObservations.map((group) => (
+              <div key={group.outcomeId}>
+                <button
+                  type="button"
+                  onClick={() => onJumpToOutcome?.(group.domainId, group.outcomeId)}
+                  disabled={!onJumpToOutcome}
+                  title={group.description}
+                  className="inline-flex items-center gap-1 rounded-full border border-teal-300 bg-white px-2.5 py-1 text-xs font-medium text-teal-700 shadow-sm hover:bg-teal-100 disabled:cursor-default disabled:opacity-80"
+                >
+                  <span className="font-semibold">{group.code}</span>
+                  <span className="text-teal-400">· {group.domainName}</span>
+                </button>
+                <div className="mt-2 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {group.observations.map((o, i) =>
+                    editingId === o.id ? (
+                      <ObservationEditCard
+                        key={o.id}
+                        obs={o}
+                        domainName={group.domainName}
+                        outcomeCode={group.code}
+                        outcomeDescription={group.description}
+                        onSaved={() => {
+                          setEditingId(null);
+                          load();
+                        }}
+                        onCancel={() => setEditingId(null)}
+                      />
+                    ) : (
+                      <ObservationReadCard
+                        key={o.id}
+                        obs={o}
+                        index={i}
+                        onEdit={() => setEditingId(o.id)}
+                      />
+                    )
+                  )}
+                </div>
+              </div>
             ))}
           </div>
         </div>
