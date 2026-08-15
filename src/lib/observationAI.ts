@@ -19,7 +19,6 @@ export function buildObservationPrompt({
   outcomeCode,
   outcomeDescription,
   planText,
-  recordedActivity,
   hasMedia,
   isVideo,
 }: {
@@ -27,7 +26,6 @@ export function buildObservationPrompt({
   outcomeCode?: string;
   outcomeDescription?: string;
   planText?: string;
-  recordedActivity?: string;
   hasMedia: boolean;
   isVideo: boolean;
 }) {
@@ -40,17 +38,12 @@ export function buildObservationPrompt({
 
   const mediaWord = isVideo ? "бичлэг" : "зураг";
   const trimmedPlan = planText?.trim();
-  const trimmedRecorded = recordedActivity?.trim();
 
   const intro: string[] = [];
   if (hasMedia) {
     intro.push(`Хавсаргасан ${mediaWord}ан дээр хүүхэд ямар үйл ажиллагаа хийж байгааг сайтар ажигла.`);
   }
-  if (trimmedRecorded) {
-    intro.push(
-      `Тухайн хүүхдийн талаар өөр чиглэлийн СҮД-ээр өмнө нь БОДИТООР баримтжуулсан, дугаарлагдсан ажиглалтын тэмдэглэлүүд: "${trimmedRecorded}". Эдгээр нь янз бүрийн өдөр бичигдсэн, тус тусдаа тохиолдол байж болно тул шинэ, зохиомол нөхцөл байдал бүү зохио — эдгээрээс доорх шинэ СҮД-тэй хамгийн их хамааралтай, тухайн чадварыг тод харуулсан ажиглалт(ууд) дээр голлон тулгуурлаж бич (жишээ нь, хэрэв зөвхөн Ажиглалт 2 нь хэл ярианы холбогдолтой баримт агуулж байвал зөвхөн Ажиглалт 2-т үндэслэ, бусдыг хэрэггүй бол оруулах албагүй).`
-    );
-  } else if (trimmedPlan) {
+  if (trimmedPlan) {
     intro.push(
       `Багшийн төлөвлөсөн үйл ажиллагаа: "${trimmedPlan}". Энэ төлөвлөлтөд үндэслэн, хүүхэд уг үйл ажиллагааг хийж гүйцэтгэхэд юу ажиглагдах, ямар чадвар илрэх магадлалтайг бодит, түгээмэл жишээгээр төсөөлж бич.`
     );

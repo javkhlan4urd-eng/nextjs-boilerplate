@@ -334,9 +334,9 @@ export interface PlanTarget {
   description: string;
 }
 
-export async function createObservationsFromRecordedActivity(
+export async function createObservationsFromPlan(
   childId: string,
-  recordedActivity: string,
+  planText: string,
   observedOn: string,
   stage: "garaa" | "yavts" | undefined,
   targets: PlanTarget[]
@@ -346,7 +346,7 @@ export async function createObservationsFromRecordedActivity(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Нэвтрээгүй байна");
-  if (!recordedActivity.trim()) throw new Error("Энэ СҮД-д дор хаяж нэг ажиглалт бичиж хадгална уу");
+  if (!planText.trim()) throw new Error("Үйл ажиллагааны төлөвлөлтийг бичнэ үү");
   if (targets.length === 0) throw new Error("Холбоотой СҮД алга");
 
   const apiKey = process.env.GEMINI_API_KEY;
@@ -361,7 +361,7 @@ export async function createObservationsFromRecordedActivity(
         domainName: t.domainName,
         outcomeCode: t.code,
         outcomeDescription: t.description,
-        recordedActivity,
+        planText,
         hasMedia: false,
         isVideo: false,
       });
@@ -391,7 +391,7 @@ export async function createObservationsFromRecordedActivity(
 
       await maybeAutoGenerateConclusion(supabase, user.id, childId, t.outcomeId);
     } catch (e) {
-      console.error("createObservationsFromRecordedActivity failed for outcome", t.outcomeId, e);
+      console.error("createObservationsFromPlan failed for outcome", t.outcomeId, e);
       failed += 1;
     }
   }
