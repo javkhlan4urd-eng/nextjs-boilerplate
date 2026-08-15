@@ -374,7 +374,6 @@ export default function OutcomeWorkspace({
       await createAction(fd);
       setDraftFields(emptyObservationFields());
       setDraftMedia([]);
-      setDraftPlan("");
       await load();
     } catch (e) {
       setObsError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -469,6 +468,12 @@ export default function OutcomeWorkspace({
               AI төлөвлөлтөд үндэслэн холбоотой СҮД бүрт ажиглалт автоматаар бичиж, шууд хадгална.
               Дараа нь &quot;Холбоотой СҮД дэх ажиглалтууд&quot; хэсэгт засаж болно.
             </p>
+            {!draftPlan.trim() && (
+              <p className="mt-1 text-xs font-medium text-amber-600">
+                ⚠️ Идэвхжүүлэхийн тулд доорх шинэ ажиглалтын &quot;Үйл ажиллагааны төлөвлөлт&quot;
+                талбарт төлөвлөлтөө бичнэ үү.
+              </p>
+            )}
             {writeRelatedResult && <p className="mt-1 text-xs text-emerald-700">{writeRelatedResult}</p>}
             {writeRelatedError && <p className="mt-1 text-xs text-red-600">{writeRelatedError}</p>}
           </div>
