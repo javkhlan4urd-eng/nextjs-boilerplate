@@ -10,14 +10,6 @@ const CARDS = [
     to: "to-violet-500",
   },
   {
-    href: "/assessment/yavts",
-    icon: "🔄",
-    title: "Явцын үнэлгээ",
-    desc: "Хичээлийн жилийн туршид тогтмол хийгдэх, чиглэл тус бүрийн ажиглалт тэмдэглэл, зураг баримттай үнэлгээ.",
-    from: "from-teal-500",
-    to: "to-emerald-500",
-  },
-  {
     href: "/assessment/result",
     icon: "🏁",
     title: "Үр дүнгийн үнэлгээ",
