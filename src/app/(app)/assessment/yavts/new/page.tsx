@@ -53,7 +53,7 @@ export default async function NewProgressAssessmentPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-xl font-semibold text-slate-900">Явцын үнэлгээ нэмэх</h1>
+      <h1 className="text-xl font-semibold text-slate-900">Ажиглалт нэмэх</h1>
       <p className="mt-1 text-sm text-slate-500">
         Суралцахуйн чиглэлээр явцын түвшинг тогтоож, баримт нотолгоо болгож зураг хавсаргана уу.
       </p>
@@ -66,7 +66,7 @@ export default async function NewProgressAssessmentPage({
           defaultChildId={child}
           stage="yavts"
           noteLabel="Ажиглалтын тэмдэглэл, шалгуур"
-          submitLabel="Явцын үнэлгээ хадгалах"
+          submitLabel="Ажиглалт хадгалах"
         />
       </div>
     </div>

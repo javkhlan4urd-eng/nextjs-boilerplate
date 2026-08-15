@@ -76,7 +76,7 @@ export default async function ProgressAssessmentPage({
             href={newObsQuery ? `/assessment/yavts/new?${newObsQuery}` : "/assessment/yavts/new"}
             className="whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-50"
           >
-            + Явцын үнэлгээ нэмэх
+            + Ажиглалт нэмэх
           </Link>
         </div>
       </div>
@@ -238,7 +238,7 @@ export default async function ProgressAssessmentPage({
             <p className="mt-1 text-xs text-slate-400">
               {hasFilters
                 ? "Шүүлтүүрээ өөрчилж дахин үзнэ үү."
-                : "Дээрх \"+ Явцын үнэлгээ нэмэх\" товчоор эхлүүлээрэй."}
+                : "Дээрх \"+ Ажиглалт нэмэх\" товчоор эхлүүлээрэй."}
             </p>
           </div>
         )}
