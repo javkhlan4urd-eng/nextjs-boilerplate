@@ -16,13 +16,13 @@ export function emptyObservationFields(): ObservationFields {
 }
 
 export async function analyzeObservationPhoto(
-  imageUrl: string,
+  mediaUrl: string,
   context: { domainName?: string; outcomeCode?: string; outcomeDescription?: string }
 ): Promise<ObservationFields> {
   const res = await fetch("/api/analyze-observation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ imageUrl, ...context }),
+    body: JSON.stringify({ mediaUrl, ...context }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "AI дүн шинжилгээ амжилтгүй боллоо");

@@ -233,12 +233,12 @@ export default function ObservationForm({
               <button
                 type="button"
                 onClick={async () => {
-                  const firstImage = media.find((m) => m.type === "image");
-                  if (!firstImage) return;
+                  const firstMedia = media.find((m) => m.type === "image") ?? media[0];
+                  if (!firstMedia) return;
                   setAiError(null);
                   setAiFilling(true);
                   try {
-                    const result = await analyzeObservationPhoto(firstImage.url, {
+                    const result = await analyzeObservationPhoto(firstMedia.url, {
                       domainName: selectedDomain?.name,
                     });
                     setFields(result);
@@ -248,8 +248,8 @@ export default function ObservationForm({
                     setAiFilling(false);
                   }
                 }}
-                disabled={aiFilling || !media.some((m) => m.type === "image")}
-                title={!media.some((m) => m.type === "image") ? "Эхлээд зураг хавсаргана уу" : ""}
+                disabled={aiFilling || media.length === 0}
+                title={media.length === 0 ? "Эхлээд зураг эсвэл бичлэг хавсаргана уу" : ""}
                 className="rounded-full bg-white px-3 py-1 text-xs font-medium text-violet-600 shadow-sm ring-1 ring-violet-200 hover:bg-violet-50 disabled:opacity-50"
               >
                 {aiFilling ? "🤖 Бэлдэж байна..." : "🤖 AI-аар бэлтгэх"}

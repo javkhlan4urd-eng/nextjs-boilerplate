@@ -8,6 +8,26 @@ export interface UploadedFile {
   type: "image" | "video";
 }
 
+const EXT_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  heic: "image/heic",
+  heif: "image/heif",
+  gif: "image/gif",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  "3gp": "video/3gpp",
+};
+
+function guessMimeType(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return EXT_MIME[ext] || "application/octet-stream";
+}
+
 export default function PhotoCapture({
   bucket,
   folder,
@@ -25,6 +45,7 @@ export default function PhotoCapture({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
   const pickerRef = useRef<HTMLInputElement>(null);
 
   async function handleFiles(fileList: FileList | null) {
@@ -43,12 +64,13 @@ export default function PhotoCapture({
 
     const uploaded: UploadedFile[] = [];
     for (const file of Array.from(fileList)) {
-      const isVideo = file.type.startsWith("video/");
+      const mimeType = guessMimeType(file);
+      const isVideo = mimeType.startsWith("video/");
       const ext = file.name.split(".").pop() || (isVideo ? "mp4" : "jpg");
       const path = `${user.id}/${folder}/${crypto.randomUUID()}.${ext}`;
       const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, {
         upsert: false,
-        contentType: file.type || undefined,
+        contentType: mimeType,
       });
       if (upErr) {
         setError(upErr.message);
@@ -63,6 +85,7 @@ export default function PhotoCapture({
     onChange(updated);
     setUploading(false);
     if (cameraRef.current) cameraRef.current.value = "";
+    if (videoRef.current) videoRef.current.value = "";
     if (pickerRef.current) pickerRef.current.value = "";
   }
 
@@ -106,6 +129,18 @@ export default function PhotoCapture({
             ref={cameraRef}
             type="file"
             accept="image/*"
+            capture="environment"
+            multiple={multiple}
+            className="hidden"
+            onChange={(e) => handleFiles(e.target.files)}
+          />
+        </label>
+        <label className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
+          🎥 Бичлэг хийх
+          <input
+            ref={videoRef}
+            type="file"
+            accept="video/*"
             capture="environment"
             multiple={multiple}
             className="hidden"

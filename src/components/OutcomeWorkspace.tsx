@@ -144,12 +144,12 @@ function ObservationEditCard({
   const [aiError, setAiError] = useState<string | null>(null);
 
   async function aiFill() {
-    const firstImage = media.find((m) => m.type === "image");
-    if (!firstImage) return;
+    const firstMedia = media.find((m) => m.type === "image") ?? media[0];
+    if (!firstMedia) return;
     setAiError(null);
     setAiFilling(true);
     try {
-      const result = await analyzeObservationPhoto(firstImage.url, {
+      const result = await analyzeObservationPhoto(firstMedia.url, {
         domainName,
         outcomeCode,
         outcomeDescription,
@@ -175,7 +175,7 @@ function ObservationEditCard({
     }
   }
 
-  const hasPhoto = media.some((m) => m.type === "image");
+  const hasMedia = media.length > 0;
 
   return (
     <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/40 p-4">
@@ -184,8 +184,8 @@ function ObservationEditCard({
         <button
           type="button"
           onClick={aiFill}
-          disabled={aiFilling || !hasPhoto}
-          title={!hasPhoto ? "Эхлээд зураг хавсаргана уу" : ""}
+          disabled={aiFilling || !hasMedia}
+          title={!hasMedia ? "Эхлээд зураг эсвэл бичлэг хавсаргана уу" : ""}
           className="rounded-full bg-white px-3 py-1 text-xs font-medium text-violet-600 shadow-sm ring-1 ring-violet-200 hover:bg-violet-50 disabled:opacity-50"
         >
           {aiFilling ? "🤖 Бэлдэж байна..." : "🤖 AI-аар бэлтгэх"}
@@ -292,12 +292,12 @@ export default function OutcomeWorkspace({
   }, [load]);
 
   async function aiFillDraft() {
-    const firstImage = draftMedia.find((m) => m.type === "image");
-    if (!firstImage) return;
+    const firstMedia = draftMedia.find((m) => m.type === "image") ?? draftMedia[0];
+    if (!firstMedia) return;
     setAiFillObsError(null);
     setAiFillingObs(true);
     try {
-      const result = await analyzeObservationPhoto(firstImage.url, {
+      const result = await analyzeObservationPhoto(firstMedia.url, {
         domainName,
         outcomeCode,
         outcomeDescription,
@@ -366,7 +366,7 @@ export default function OutcomeWorkspace({
     }
   }
 
-  const hasDraftPhoto = draftMedia.some((m) => m.type === "image");
+  const hasDraftMedia = draftMedia.length > 0;
 
   return (
     <div className="space-y-5">
@@ -446,8 +446,8 @@ export default function OutcomeWorkspace({
                 <button
                   type="button"
                   onClick={aiFillDraft}
-                  disabled={aiFillingObs || !hasDraftPhoto}
-                  title={!hasDraftPhoto ? "Эхлээд зураг хавсаргана уу" : ""}
+                  disabled={aiFillingObs || !hasDraftMedia}
+                  title={!hasDraftMedia ? "Эхлээд зураг эсвэл бичлэг хавсаргана уу" : ""}
                   className="rounded-full bg-white px-3 py-1 text-xs font-medium text-violet-600 shadow-sm ring-1 ring-violet-200 hover:bg-violet-50 disabled:opacity-50"
                 >
                   {aiFillingObs ? "🤖 Бэлдэж байна..." : "🤖 AI-аар бэлтгэх"}
