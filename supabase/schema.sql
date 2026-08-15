@@ -313,6 +313,7 @@ create table if not exists public.outcome_conclusions (
   teacher_id uuid not null references public.profiles (id) on delete cascade,
   conclusion text not null,
   observation_count int not null,
+  next_steps text,
   generated_at timestamptz not null default now(),
   unique (child_id, outcome_id)
 );

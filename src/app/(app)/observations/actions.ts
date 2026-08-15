@@ -108,6 +108,10 @@ export async function createObservation(formData: FormData) {
     }
   }
 
+  if (String(formData.get("no_redirect") || "") === "1") {
+    return;
+  }
+
   if (stage === "garaa") {
     revalidatePath("/assessment/garaa");
     redirect("/assessment/garaa");
@@ -117,6 +121,42 @@ export async function createObservation(formData: FormData) {
     redirect("/assessment/yavts");
   }
   redirect(`/children/${child_id}`);
+}
+
+export async function updateOutcomeConclusion(
+  childId: string,
+  outcomeId: string,
+  conclusion: string,
+  nextSteps: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Нэвтрээгүй байна");
+
+  const { data: existing } = await supabase
+    .from("outcome_conclusions")
+    .select("observation_count")
+    .eq("child_id", childId)
+    .eq("outcome_id", outcomeId)
+    .maybeSingle();
+
+  const { error } = await supabase.from("outcome_conclusions").upsert(
+    {
+      child_id: childId,
+      outcome_id: outcomeId,
+      teacher_id: user.id,
+      conclusion: conclusion.trim(),
+      next_steps: nextSteps.trim() || null,
+      observation_count: existing?.observation_count ?? 0,
+      generated_at: new Date().toISOString(),
+    },
+    { onConflict: "child_id,outcome_id" }
+  );
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/reports/outcomes");
 }
 
 export async function deleteObservation(formData: FormData) {

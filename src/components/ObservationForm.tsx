@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import PhotoCapture, { type UploadedFile } from "./PhotoCapture";
+import OutcomeWorkspace from "./OutcomeWorkspace";
 import { LEVEL_LABELS } from "@/types/database";
 import { LEVEL_STYLES } from "@/lib/colors";
 
@@ -52,6 +53,8 @@ export default function ObservationForm({
   const [outcomeId, setOutcomeId] = useState("");
 
   const selectedChild = childOptions.find((c) => c.id === childId);
+  const selectedDomain = domainOptions.find((d) => d.id === domainId);
+  const selectedOutcome = outcomeOptions.find((o) => o.id === outcomeId);
 
   const filteredOutcomes = useMemo(() => {
     if (!domainId) return [];
@@ -62,66 +65,14 @@ export default function ObservationForm({
     );
   }, [outcomeOptions, domainId, selectedChild]);
 
-  const [progress, setProgress] = useState<{
-    notes: { observed_on: string; note: string }[];
-    count: number;
-    threshold: number;
-    conclusion: string | null;
-  } | null>(null);
-  const [progressLoading, setProgressLoading] = useState(false);
-
-  useEffect(() => {
-    if (!childId || !outcomeId) {
-      setProgress(null);
-      return;
-    }
-    let cancelled = false;
-    setProgressLoading(true);
-    fetch(`/api/outcome-progress?child_id=${childId}&outcome_id=${outcomeId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!cancelled && !data.error) setProgress(data);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setProgressLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [childId, outcomeId]);
-
   return (
-    <form
-      action={async (fd) => {
-        setError(null);
-        if (!level) {
-          setError("Хөгжлийн түвшинг сонгоно уу");
-          return;
-        }
-        setSubmitting(true);
-        try {
-          await action(fd);
-        } catch (e) {
-          setError(e instanceof Error ? e.message : "Алдаа гарлаа");
-          setSubmitting(false);
-        }
-      }}
-      className="space-y-5 rounded-xl border border-slate-200 bg-white p-5"
-    >
-      <input type="hidden" name="id" value={obsId} />
-      <input type="hidden" name="level" value={level ?? ""} />
-      <input type="hidden" name="media" value={JSON.stringify(media)} />
-      {stage && <input type="hidden" name="stage" value={stage} />}
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
         <div>
           <label className="block text-xs font-medium text-slate-500">
             Хүүхэд <span className="text-red-500">*</span>
           </label>
           <select
-            name="child_id"
-            required
             value={childId}
             onChange={(e) => setChildId(e.target.value)}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -137,155 +88,172 @@ export default function ObservationForm({
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-500">Огноо</label>
-          <input
-            type="date"
-            name="observed_on"
-            defaultValue={new Date().toISOString().slice(0, 10)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-slate-500">
-          Суралцахуйн чиглэл <span className="text-red-500">*</span>
-        </label>
-        <select
-          name="domain_id"
-          required
-          value={domainId}
-          onChange={(e) => {
-            setDomainId(e.target.value);
-            setOutcomeId("");
-          }}
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="" disabled>
-            Сонгоно уу
-          </option>
-          {domainOptions.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {domainId && filteredOutcomes.length > 0 && (
-        <div>
           <label className="block text-xs font-medium text-slate-500">
-            Суралцахуйн үр дүн (СҮД) <span className="text-slate-400">(заавал биш)</span>
+            Суралцахуйн чиглэл <span className="text-red-500">*</span>
           </label>
           <select
-            name="outcome_id"
-            value={outcomeId}
-            onChange={(e) => setOutcomeId(e.target.value)}
+            value={domainId}
+            onChange={(e) => {
+              setDomainId(e.target.value);
+              setOutcomeId("");
+            }}
             className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
           >
-            <option value="">-- Ерөнхий (тодорхой СҮД сонгохгүй) --</option>
-            {filteredOutcomes.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.code}: {o.description}
+            <option value="" disabled>
+              Сонгоно уу
+            </option>
+            {domainOptions.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
               </option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-slate-400">
-            Тухайн СҮД-ээр 3-4 удаа тэмдэглэл бичсэний дараа AI автоматаар дүгнэлт гаргана.
-          </p>
-
-          {progressLoading && (
-            <p className="mt-2 text-xs text-slate-400">Ахиц шалгаж байна...</p>
-          )}
-
-          {progress && !progressLoading && (
-            <div className="mt-2 rounded-lg bg-slate-50 p-3">
-              <p className="text-xs font-medium text-slate-600">
-                Энэ СҮД дээр өмнө нь {progress.count}/{progress.threshold} тэмдэглэл бичигдсэн
-                {progress.count >= progress.threshold ? " — дараагийн тэмдэглэлд дүгнэлт шинэчлэгдэнэ." : ""}
-              </p>
-              {progress.notes.length > 0 && (
-                <ul className="mt-2 space-y-1">
-                  {progress.notes.map((n, i) => (
-                    <li key={i} className="text-xs text-slate-500">
-                      <span className="text-slate-400">{n.observed_on}:</span> {n.note}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {progress.conclusion && (
-                <p className="mt-2 text-xs text-emerald-700">
-                  <span className="font-semibold">Одоогийн дүгнэлт:</span> {progress.conclusion}
-                </p>
-              )}
-            </div>
-          )}
         </div>
-      )}
 
-      <div>
-        <label className="block text-xs font-medium text-slate-500">
-          Хөгжлийн түвшин <span className="text-red-500">*</span>
-        </label>
-        <div className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {[1, 2, 3, 4].map((lv) => (
-            <button
-              key={lv}
-              type="button"
-              onClick={() => setLevel(lv)}
-              className={`rounded-lg border px-2 py-2 text-xs font-medium transition ${
-                level === lv
-                  ? `border-transparent text-white shadow-sm ${LEVEL_STYLES[lv].solid}`
-                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
+        {domainId && filteredOutcomes.length > 0 && (
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-medium text-slate-500">
+              Суралцахуйн үр дүн (СҮД) <span className="text-slate-400">(заавал биш)</span>
+            </label>
+            <select
+              value={outcomeId}
+              onChange={(e) => setOutcomeId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             >
-              {LEVEL_LABELS[lv]}
-            </button>
-          ))}
-        </div>
+              <option value="">-- Ерөнхий (тодорхой СҮД сонгохгүй) --</option>
+              {filteredOutcomes.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.code}: {o.description}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-400">
+              Тодорхой СҮД сонговол доор тухайн СҮД-ийн ажиглалтуудыг зэрэгцүүлж харж, шинээр нэмэх
+              боломжтой болно.
+            </p>
+          </div>
+        )}
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-slate-500">
-          {noteLabel ?? "Ажиглалт, тэмдэглэл"}
-        </label>
-        <textarea
-          name="note"
-          rows={3}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Юу ажигласнаа энд бичнэ үү (эсвэл зураг хавсаргаад AI-аар автоматаар бичүүлнэ үү)..."
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+      {childId && outcomeId && selectedOutcome ? (
+        <OutcomeWorkspace
+          childId={childId}
+          domainId={domainId}
+          outcomeId={outcomeId}
+          domainName={selectedDomain?.name ?? ""}
+          outcomeCode={selectedOutcome.code}
+          outcomeDescription={selectedOutcome.description}
+          stage={stage}
+          createAction={action}
         />
-      </div>
+      ) : (
+        <form
+          action={async (fd) => {
+            setError(null);
+            if (!childId) {
+              setError("Хүүхдийг сонгоно уу");
+              return;
+            }
+            if (!domainId) {
+              setError("Чиглэлийг сонгоно уу");
+              return;
+            }
+            if (!level) {
+              setError("Хөгжлийн түвшинг сонгоно уу");
+              return;
+            }
+            setSubmitting(true);
+            try {
+              await action(fd);
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Алдаа гарлаа");
+              setSubmitting(false);
+            }
+          }}
+          className="space-y-5 rounded-xl border border-slate-200 bg-white p-5"
+        >
+          <input type="hidden" name="id" value={obsId} />
+          <input type="hidden" name="child_id" value={childId} />
+          <input type="hidden" name="domain_id" value={domainId} />
+          <input type="hidden" name="level" value={level ?? ""} />
+          <input type="hidden" name="media" value={JSON.stringify(media)} />
+          {stage && <input type="hidden" name="stage" value={stage} />}
 
-      <div>
-        <label className="block text-xs font-medium text-slate-500">
-          Зураг / бичлэг хавсаргах
-        </label>
-        <p className="mt-0.5 text-xs text-slate-400">
-          Зураг хавсаргавал AI автоматаар ажиглалтын тэмдэглэл санал болгоно (шаардвал засаж болно).
-        </p>
-        <div className="mt-1">
-          <PhotoCapture
-            bucket="observation-media"
-            folder={`observations/${obsId}`}
-            multiple
-            onChange={setMedia}
-            onAnalyzed={(suggested) => setNote((prev) => (prev.trim() ? prev : suggested))}
-          />
-        </div>
-      </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500">Огноо</label>
+            <input
+              type="date"
+              name="observed_on"
+              defaultValue={new Date().toISOString().slice(0, 10)}
+              className="mt-1 w-full max-w-xs rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+          <div>
+            <label className="block text-xs font-medium text-slate-500">
+              Хөгжлийн түвшин <span className="text-red-500">*</span>
+            </label>
+            <div className="mt-1 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[1, 2, 3, 4].map((lv) => (
+                <button
+                  key={lv}
+                  type="button"
+                  onClick={() => setLevel(lv)}
+                  className={`rounded-lg border px-2 py-2 text-xs font-medium transition ${
+                    level === lv
+                      ? `border-transparent text-white shadow-sm ${LEVEL_STYLES[lv].solid}`
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {LEVEL_LABELS[lv]}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95 disabled:opacity-60"
-      >
-        {submitting ? "Хадгалж байна..." : (submitLabel ?? "Ажиглалт хадгалах")}
-      </button>
-    </form>
+          <div>
+            <label className="block text-xs font-medium text-slate-500">
+              {noteLabel ?? "Ажиглалт, тэмдэглэл"}
+            </label>
+            <textarea
+              name="note"
+              rows={3}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Юу ажигласнаа энд бичнэ үү (эсвэл зураг хавсаргаад AI-аар автоматаар бичүүлнэ үү)..."
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500">
+              Зураг / бичлэг хавсаргах
+            </label>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Зураг хавсаргавал AI автоматаар ажиглалтын тэмдэглэл санал болгоно (шаардвал засаж болно).
+            </p>
+            <div className="mt-1">
+              <PhotoCapture
+                bucket="observation-media"
+                folder={`observations/${obsId}`}
+                multiple
+                onChange={setMedia}
+                onAnalyzed={(suggested) => setNote((prev) => (prev.trim() ? prev : suggested))}
+              />
+            </div>
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95 disabled:opacity-60"
+          >
+            {submitting ? "Хадгалж байна..." : (submitLabel ?? "Ажиглалт хадгалах")}
+          </button>
+        </form>
+      )}
+    </div>
   );
 }
