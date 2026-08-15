@@ -20,7 +20,9 @@ export async function GET(request: NextRequest) {
 
   const { data: rows, error } = await supabase
     .from("observations")
-    .select("id, observed_on, note, level")
+    .select(
+      "id, observed_on, note, level, observed_fact, development_direction, child_performance, teacher_conclusion, next_action, methodology_note"
+    )
     .eq("child_id", childId)
     .eq("outcome_id", outcomeId)
     .order("observed_on", { ascending: true });
@@ -49,6 +51,12 @@ export async function GET(request: NextRequest) {
     observed_on: r.observed_on,
     note: r.note,
     level: r.level,
+    observed_fact: r.observed_fact,
+    development_direction: r.development_direction,
+    child_performance: r.child_performance,
+    teacher_conclusion: r.teacher_conclusion,
+    next_action: r.next_action,
+    methodology_note: r.methodology_note,
     media: mediaByObs[r.id] ?? [],
   }));
 

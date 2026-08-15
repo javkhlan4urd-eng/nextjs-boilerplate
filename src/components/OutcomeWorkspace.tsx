@@ -2,15 +2,27 @@
 
 import { useEffect, useState, useCallback } from "react";
 import PhotoCapture, { type UploadedFile } from "./PhotoCapture";
-import { updateOutcomeConclusion, updateObservation, generateOutcomeAssessmentNow } from "@/app/(app)/observations/actions";
-import { LEVEL_LABELS } from "@/types/database";
+import {
+  updateOutcomeConclusion,
+  updateObservation,
+  generateOutcomeAssessmentNow,
+  type ObservationFields,
+} from "@/app/(app)/observations/actions";
+import SevenFieldsEditor, { emptyObservationFields, analyzeObservationPhoto } from "./SevenFieldsEditor";
+import { LEVEL_LABELS, OBSERVATION_FIELDS } from "@/types/database";
 import { LEVEL_STYLES } from "@/lib/colors";
 
 interface ObsRow {
   id: string;
   observed_on: string;
-  note: string | null;
   level: number | null;
+  note: string | null;
+  observed_fact: string | null;
+  development_direction: string | null;
+  child_performance: string | null;
+  teacher_conclusion: string | null;
+  next_action: string | null;
+  methodology_note: string | null;
   media: { url: string; type: string }[];
 }
 
@@ -32,28 +44,129 @@ interface ProgressData {
   related: RelatedOutcome[];
 }
 
+function ObservationReadCard({
+  obs,
+  index,
+  onEdit,
+}: {
+  obs: ObsRow;
+  index: number;
+  onEdit: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const extraFields = OBSERVATION_FIELDS.filter((f) => f.key !== "note" && obs[f.key]);
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-slate-400">Ажиглалт {index + 1}</span>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="text-xs font-medium text-indigo-600 hover:underline"
+        >
+          Засах
+        </button>
+      </div>
+      {obs.media.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {obs.media.map((m, mi) =>
+            m.type === "video" ? (
+              <video key={mi} src={m.url} className="h-20 w-20 rounded-lg object-cover" muted />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={mi} src={m.url} alt="" className="h-20 w-20 rounded-lg object-cover" />
+            )
+          )}
+        </div>
+      )}
+      <p className="mt-2 text-xs text-slate-400">{obs.observed_on}</p>
+      <p className="mt-1 text-sm text-slate-700">{obs.note || "—"}</p>
+
+      {extraFields.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-2 text-xs font-medium text-violet-600 hover:underline"
+          >
+            {expanded ? "Дэлгэрэнгүйг нуух ▴" : "Дэлгэрэнгүй харах ▾"}
+          </button>
+          {expanded && (
+            <div className="mt-2 space-y-1.5 rounded-lg bg-violet-50/60 p-2.5">
+              {extraFields.map((f) => (
+                <p key={f.key} className="text-xs text-slate-700">
+                  <span className="font-semibold text-violet-700">
+                    {f.letter}. {f.label}:
+                  </span>{" "}
+                  {obs[f.key]}
+                </p>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function ObservationEditCard({
   obs,
+  domainName,
+  outcomeCode,
+  outcomeDescription,
   onSaved,
   onCancel,
 }: {
   obs: ObsRow;
+  domainName: string;
+  outcomeCode: string;
+  outcomeDescription: string;
   onSaved: () => void;
   onCancel: () => void;
 }) {
-  const [note, setNote] = useState(obs.note ?? "");
+  const [fields, setFields] = useState<ObservationFields>({
+    observed_fact: obs.observed_fact ?? "",
+    development_direction: obs.development_direction ?? "",
+    child_performance: obs.child_performance ?? "",
+    note: obs.note ?? "",
+    teacher_conclusion: obs.teacher_conclusion ?? "",
+    next_action: obs.next_action ?? "",
+    methodology_note: obs.methodology_note ?? "",
+  });
   const [observedOn, setObservedOn] = useState(obs.observed_on);
   const [media, setMedia] = useState<UploadedFile[]>(
     obs.media.map((m) => ({ url: m.url, type: m.type as "image" | "video" }))
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiFilling, setAiFilling] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  async function aiFill() {
+    const firstImage = media.find((m) => m.type === "image");
+    if (!firstImage) return;
+    setAiError(null);
+    setAiFilling(true);
+    try {
+      const result = await analyzeObservationPhoto(firstImage.url, {
+        domainName,
+        outcomeCode,
+        outcomeDescription,
+      });
+      setFields(result);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Алдаа гарлаа");
+    } finally {
+      setAiFilling(false);
+    }
+  }
 
   async function save() {
     setError(null);
     setSaving(true);
     try {
-      await updateObservation(obs.id, note, media, observedOn);
+      await updateObservation(obs.id, fields, media, observedOn);
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -62,19 +175,27 @@ function ObservationEditCard({
     }
   }
 
+  const hasPhoto = media.some((m) => m.type === "image");
+
   return (
     <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/40 p-4">
-      <span className="text-xs font-semibold text-amber-600">Засварлаж байна</span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-amber-600">Засварлаж байна</span>
+        <button
+          type="button"
+          onClick={aiFill}
+          disabled={aiFilling || !hasPhoto}
+          title={!hasPhoto ? "Эхлээд зураг хавсаргана уу" : ""}
+          className="rounded-full bg-white px-3 py-1 text-xs font-medium text-violet-600 shadow-sm ring-1 ring-violet-200 hover:bg-violet-50 disabled:opacity-50"
+        >
+          {aiFilling ? "🤖 Бэлдэж байна..." : "🤖 AI-аар бэлтгэх"}
+        </button>
+      </div>
+      {aiError && <p className="mt-1 text-xs text-red-600">{aiError}</p>}
       <input
         type="date"
         value={observedOn}
         onChange={(e) => setObservedOn(e.target.value)}
-        className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-      />
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        rows={3}
         className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
       />
       <div className="mt-2">
@@ -84,9 +205,9 @@ function ObservationEditCard({
           multiple
           initial={media}
           onChange={setMedia}
-          onAnalyzed={(suggested) => setNote((prev) => (prev.trim() ? prev : suggested))}
         />
       </div>
+      <SevenFieldsEditor value={fields} onChange={setFields} />
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
       <div className="mt-3 flex gap-2">
         <button
@@ -134,11 +255,13 @@ export default function OutcomeWorkspace({
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [draftNote, setDraftNote] = useState("");
+  const [draftFields, setDraftFields] = useState<ObservationFields>(emptyObservationFields());
   const [draftMedia, setDraftMedia] = useState<UploadedFile[]>([]);
   const [draftDate, setDraftDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [savingObs, setSavingObs] = useState(false);
   const [obsError, setObsError] = useState<string | null>(null);
+  const [aiFillingObs, setAiFillingObs] = useState(false);
+  const [aiFillObsError, setAiFillObsError] = useState<string | null>(null);
 
   const [conclusionDraft, setConclusionDraft] = useState("");
   const [nextStepsDraft, setNextStepsDraft] = useState("");
@@ -168,6 +291,25 @@ export default function OutcomeWorkspace({
     load();
   }, [load]);
 
+  async function aiFillDraft() {
+    const firstImage = draftMedia.find((m) => m.type === "image");
+    if (!firstImage) return;
+    setAiFillObsError(null);
+    setAiFillingObs(true);
+    try {
+      const result = await analyzeObservationPhoto(firstImage.url, {
+        domainName,
+        outcomeCode,
+        outcomeDescription,
+      });
+      setDraftFields(result);
+    } catch (e) {
+      setAiFillObsError(e instanceof Error ? e.message : "Алдаа гарлаа");
+    } finally {
+      setAiFillingObs(false);
+    }
+  }
+
   async function saveObservation() {
     setObsError(null);
     setSavingObs(true);
@@ -178,12 +320,18 @@ export default function OutcomeWorkspace({
       fd.set("domain_id", domainId);
       fd.set("outcome_id", outcomeId);
       fd.set("observed_on", draftDate);
-      fd.set("note", draftNote);
+      fd.set("note", draftFields.note);
+      fd.set("observed_fact", draftFields.observed_fact);
+      fd.set("development_direction", draftFields.development_direction);
+      fd.set("child_performance", draftFields.child_performance);
+      fd.set("teacher_conclusion", draftFields.teacher_conclusion);
+      fd.set("next_action", draftFields.next_action);
+      fd.set("methodology_note", draftFields.methodology_note);
       if (stage) fd.set("stage", stage);
       fd.set("media", JSON.stringify(draftMedia));
       fd.set("no_redirect", "1");
       await createAction(fd);
-      setDraftNote("");
+      setDraftFields(emptyObservationFields());
       setDraftMedia([]);
       await load();
     } catch (e) {
@@ -217,6 +365,8 @@ export default function OutcomeWorkspace({
       setAiGenerating(false);
     }
   }
+
+  const hasDraftPhoto = draftMedia.some((m) => m.type === "image");
 
   return (
     <div className="space-y-5">
@@ -269,6 +419,9 @@ export default function OutcomeWorkspace({
                 <ObservationEditCard
                   key={o.id}
                   obs={o}
+                  domainName={domainName}
+                  outcomeCode={outcomeCode}
+                  outcomeDescription={outcomeDescription}
                   onSaved={() => {
                     setEditingId(null);
                     load();
@@ -276,55 +429,36 @@ export default function OutcomeWorkspace({
                   onCancel={() => setEditingId(null)}
                 />
               ) : (
-                <div
+                <ObservationReadCard
                   key={o.id}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-slate-400">Ажиглалт {i + 1}</span>
-                    <button
-                      type="button"
-                      onClick={() => setEditingId(o.id)}
-                      className="text-xs font-medium text-indigo-600 hover:underline"
-                    >
-                      Засах
-                    </button>
-                  </div>
-                  {o.media.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {o.media.map((m, mi) =>
-                        m.type === "video" ? (
-                          <video key={mi} src={m.url} className="h-20 w-20 rounded-lg object-cover" muted />
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img key={mi} src={m.url} alt="" className="h-20 w-20 rounded-lg object-cover" />
-                        )
-                      )}
-                    </div>
-                  )}
-                  <p className="mt-2 text-xs text-slate-400">{o.observed_on}</p>
-                  <p className="mt-1 text-sm text-slate-700">{o.note || "—"}</p>
-                </div>
+                  obs={o}
+                  index={i}
+                  onEdit={() => setEditingId(o.id)}
+                />
               )
             )}
 
             <div className="rounded-2xl border-2 border-dashed border-indigo-300 bg-indigo-50/40 p-4">
-              <span className="text-xs font-semibold text-indigo-500">
-                Ажиглалт {(data?.observations.length ?? 0) + 1} (шинэ)
-              </span>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-indigo-500">
+                  Ажиглалт {(data?.observations.length ?? 0) + 1} (шинэ)
+                </span>
+                <button
+                  type="button"
+                  onClick={aiFillDraft}
+                  disabled={aiFillingObs || !hasDraftPhoto}
+                  title={!hasDraftPhoto ? "Эхлээд зураг хавсаргана уу" : ""}
+                  className="rounded-full bg-white px-3 py-1 text-xs font-medium text-violet-600 shadow-sm ring-1 ring-violet-200 hover:bg-violet-50 disabled:opacity-50"
+                >
+                  {aiFillingObs ? "🤖 Бэлдэж байна..." : "🤖 AI-аар бэлтгэх"}
+                </button>
+              </div>
+              {aiFillObsError && <p className="mt-1 text-xs text-red-600">{aiFillObsError}</p>}
 
               <input
                 type="date"
                 value={draftDate}
                 onChange={(e) => setDraftDate(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-              />
-
-              <textarea
-                value={draftNote}
-                onChange={(e) => setDraftNote(e.target.value)}
-                rows={3}
-                placeholder="Ажиглалтын тэмдэглэл..."
                 className="mt-2 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
               />
 
@@ -334,9 +468,10 @@ export default function OutcomeWorkspace({
                   folder={`observations/${childId}-${outcomeId}`}
                   multiple
                   onChange={setDraftMedia}
-                  onAnalyzed={(suggested) => setDraftNote((prev) => (prev.trim() ? prev : suggested))}
                 />
               </div>
+
+              <SevenFieldsEditor value={draftFields} onChange={setDraftFields} />
 
               {obsError && <p className="mt-2 text-xs text-red-600">{obsError}</p>}
 
@@ -354,20 +489,20 @@ export default function OutcomeWorkspace({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 md:col-span-2">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-sm font-semibold text-emerald-800">📝 Дүгнэлт</h4>
+                <h4 className="text-sm font-semibold text-emerald-800">📝 Нэгдсэн дүгнэлт</h4>
                 <button
                   type="button"
                   onClick={aiFill}
                   disabled={aiGenerating || !data || data.observations.length === 0}
                   className="rounded-full bg-white px-3 py-1 text-xs font-medium text-indigo-600 shadow-sm ring-1 ring-indigo-200 hover:bg-indigo-50 disabled:opacity-50"
                 >
-                  {aiGenerating ? "🤖 Бэлдэж байна..." : "🤖 AI-аар бөглөх"}
+                  {aiGenerating ? "🤖 Нэгтгэж байна..." : "🤖 AI-аар нэгтгэн бичих"}
                 </button>
               </div>
               <p className="mt-0.5 text-xs text-emerald-700/80">
                 {data && data.count >= data.threshold
                   ? "AI автоматаар бэлдсэн дүгнэлт — шаардвал засаж хадгална уу."
-                  : `${data?.threshold ?? 3}+ ажиглалт бичигдсэний дараа AI дүгнэлт автоматаар бэлдэнэ. Одоо байгаа зураг, тэмдэглэлээр "AI-аар бөглөх" товчоор ч бэлдүүлж болно.`}
+                  : `${data?.threshold ?? 3}+ ажиглалт бичигдсэний дараа AI дүгнэлт автоматаар бэлдэнэ. Одоо байгаа ажиглалтуудаар "AI-аар нэгтгэн бичих" товчоор ч бэлдүүлж болно.`}
               </p>
               {aiError && <p className="mt-1 text-xs text-red-600">{aiError}</p>}
               <textarea

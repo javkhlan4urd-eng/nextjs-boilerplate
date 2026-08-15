@@ -143,7 +143,13 @@ create table if not exists public.observations (
   teacher_id uuid not null references public.profiles (id) on delete cascade,
   observed_on date not null default current_date,
   level smallint check (level between 1 and 4),
-  note text,
+  observed_fact text,           -- А. Ажиглагдсан баримт
+  development_direction text,   -- Б. Хөгжлийн чиглэл
+  child_performance text,       -- В. Хүүхдийн гүйцэтгэл
+  note text,                    -- Г. Ажиглалтын тэмдэглэл
+  teacher_conclusion text,      -- Д. Багшийн дүгнэлт
+  next_action text,             -- Е. Цаашдын үйл ажиллагаа
+  methodology_note text,        -- Ё. Арга зүйн санал
   stage text check (stage in ('garaa', 'yavts')),
   created_at timestamptz not null default now()
 );

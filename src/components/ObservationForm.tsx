@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import PhotoCapture, { type UploadedFile } from "./PhotoCapture";
 import OutcomeWorkspace from "./OutcomeWorkspace";
+import SevenFieldsEditor, { emptyObservationFields, analyzeObservationPhoto } from "./SevenFieldsEditor";
 import { LEVEL_LABELS } from "@/types/database";
 import { LEVEL_STYLES } from "@/lib/colors";
 
@@ -45,7 +46,9 @@ export default function ObservationForm({
   const [obsId] = useState(() => crypto.randomUUID());
   const [level, setLevel] = useState<number | null>(null);
   const [media, setMedia] = useState<UploadedFile[]>([]);
-  const [note, setNote] = useState("");
+  const [fields, setFields] = useState(emptyObservationFields());
+  const [aiFilling, setAiFilling] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [childId, setChildId] = useState(defaultChildId ?? "");
@@ -181,6 +184,13 @@ export default function ObservationForm({
           <input type="hidden" name="domain_id" value={domainId} />
           <input type="hidden" name="level" value={level ?? ""} />
           <input type="hidden" name="media" value={JSON.stringify(media)} />
+          <input type="hidden" name="note" value={fields.note} />
+          <input type="hidden" name="observed_fact" value={fields.observed_fact} />
+          <input type="hidden" name="development_direction" value={fields.development_direction} />
+          <input type="hidden" name="child_performance" value={fields.child_performance} />
+          <input type="hidden" name="teacher_conclusion" value={fields.teacher_conclusion} />
+          <input type="hidden" name="next_action" value={fields.next_action} />
+          <input type="hidden" name="methodology_note" value={fields.methodology_note} />
           {stage && <input type="hidden" name="stage" value={stage} />}
 
           <div>
@@ -216,36 +226,50 @@ export default function ObservationForm({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500">
-              {noteLabel ?? "Ажиглалт, тэмдэглэл"}
-            </label>
-            <textarea
-              name="note"
-              rows={3}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Юу ажигласнаа энд бичнэ үү (эсвэл зураг хавсаргаад AI-аар автоматаар бичүүлнэ үү)..."
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-500">
-              Зураг / бичлэг хавсаргах
-            </label>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="block text-xs font-medium text-slate-500">
+                Зураг / бичлэг хавсаргах
+              </label>
+              <button
+                type="button"
+                onClick={async () => {
+                  const firstImage = media.find((m) => m.type === "image");
+                  if (!firstImage) return;
+                  setAiError(null);
+                  setAiFilling(true);
+                  try {
+                    const result = await analyzeObservationPhoto(firstImage.url, {
+                      domainName: selectedDomain?.name,
+                    });
+                    setFields(result);
+                  } catch (e) {
+                    setAiError(e instanceof Error ? e.message : "Алдаа гарлаа");
+                  } finally {
+                    setAiFilling(false);
+                  }
+                }}
+                disabled={aiFilling || !media.some((m) => m.type === "image")}
+                title={!media.some((m) => m.type === "image") ? "Эхлээд зураг хавсаргана уу" : ""}
+                className="rounded-full bg-white px-3 py-1 text-xs font-medium text-violet-600 shadow-sm ring-1 ring-violet-200 hover:bg-violet-50 disabled:opacity-50"
+              >
+                {aiFilling ? "🤖 Бэлдэж байна..." : "🤖 AI-аар бэлтгэх"}
+              </button>
+            </div>
             <p className="mt-0.5 text-xs text-slate-400">
-              Зураг хавсаргавал AI автоматаар ажиглалтын тэмдэглэл санал болгоно (шаардвал засаж болно).
+              Зураг хавсаргаад &quot;AI-аар бэлтгэх&quot; товч дарвал доорх 7 талбарыг автоматаар бөглөнө (шаардвал засаж болно).
             </p>
+            {aiError && <p className="mt-1 text-xs text-red-600">{aiError}</p>}
             <div className="mt-1">
               <PhotoCapture
                 bucket="observation-media"
                 folder={`observations/${obsId}`}
                 multiple
                 onChange={setMedia}
-                onAnalyzed={(suggested) => setNote((prev) => (prev.trim() ? prev : suggested))}
               />
             </div>
           </div>
+
+          <SevenFieldsEditor value={fields} onChange={setFields} />
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 

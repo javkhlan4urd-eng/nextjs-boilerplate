@@ -6,7 +6,13 @@ export { CONCLUSION_THRESHOLD };
 
 interface NoteInput {
   observed_on: string;
+  observed_fact?: string | null;
+  development_direction?: string | null;
+  child_performance?: string | null;
   note: string | null;
+  teacher_conclusion?: string | null;
+  next_action?: string | null;
+  methodology_note?: string | null;
   media?: { url: string; type: string }[];
 }
 
@@ -43,8 +49,18 @@ export async function generateOutcomeAssessment({
 
   const recentNotes = notes.slice(-MAX_NOTES_CONSIDERED);
   const notesText = recentNotes
-    .map((n, i) => `${i + 1}) [${n.observed_on}] ${n.note || "(тэмдэглэлгүй, зөвхөн зураг)"}`)
-    .join("\n");
+    .map((n, i) => {
+      const lines = [`${i + 1}) [${n.observed_on}]`];
+      if (n.observed_fact) lines.push(`   Ажиглагдсан баримт: ${n.observed_fact}`);
+      if (n.development_direction) lines.push(`   Хөгжлийн чиглэл: ${n.development_direction}`);
+      if (n.child_performance) lines.push(`   Гүйцэтгэл: ${n.child_performance}`);
+      lines.push(`   Тэмдэглэл: ${n.note || "(тэмдэглэлгүй, зөвхөн зураг)"}`);
+      if (n.teacher_conclusion) lines.push(`   Багшийн ажиглалтын дүгнэлт: ${n.teacher_conclusion}`);
+      if (n.next_action) lines.push(`   Цаашид (тухайн ажиглалт): ${n.next_action}`);
+      if (n.methodology_note) lines.push(`   Арга зүйн санал: ${n.methodology_note}`);
+      return lines.join("\n");
+    })
+    .join("\n\n");
 
   const imageUrls = recentNotes
     .flatMap((n) => (n.media ?? []).filter((m) => m.type === "image").map((m) => m.url))
@@ -63,7 +79,7 @@ export async function generateOutcomeAssessment({
 ${notesText}
 ${imageParts.length > 0 ? `\n(Мөн ${imageParts.length} ажиглалтын зураг хавсаргасан болно, эдгээрийг харгалзан үз.)` : ""}
 
-Даалгавар: Дээрх мэдээлэлд (тэмдэглэл, зураг) үндэслэн, тухайн хүүхэд энэ СҮД-ийг хэрхэн эзэмшиж байгааг үнэлж, монгол хэлээр бич. Хариултаа яг дараах форматаар, хоёр хэсэгтэй бич:
+Даалгавар: Дээрх бүх ажиглалтуудыг (баримт, гүйцэтгэл, тэмдэглэл, зураг зэргийг) нэгтгэн харгалзаж, тухайн хүүхэд энэ СҮД-ийг хэрхэн эзэмшиж байгааг мэргэжлийн багшийн түвшинд, объектив бөгөөд тодорхой үнэлж, монгол хэлээр бич. Хариултаа яг дараах форматаар, хоёр хэсэгтэй бич:
 
 ДҮГНЭЛТ:
 (2-3 өгүүлбэрээр, объектив бөгөөд СӨБ-ийн үнэлгээний хэллэгээр — "эзэмшсэн", "хөгжиж байгаа", "дэмжлэг шаардлагатай" гэх мэт — дүгнэлт бич)

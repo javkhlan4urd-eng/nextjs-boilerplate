@@ -22,6 +22,12 @@ export async function createObservation(formData: FormData) {
   const level = levelRaw ? Number(levelRaw) : null;
   const observed_on = String(formData.get("observed_on") || new Date().toISOString().slice(0, 10));
   const note = String(formData.get("note") || "").trim();
+  const observed_fact = String(formData.get("observed_fact") || "").trim();
+  const development_direction = String(formData.get("development_direction") || "").trim();
+  const child_performance = String(formData.get("child_performance") || "").trim();
+  const teacher_conclusion = String(formData.get("teacher_conclusion") || "").trim();
+  const next_action = String(formData.get("next_action") || "").trim();
+  const methodology_note = String(formData.get("methodology_note") || "").trim();
   const stageRaw = String(formData.get("stage") || "");
   const stage = stageRaw === "garaa" || stageRaw === "yavts" ? stageRaw : null;
   const mediaJson = String(formData.get("media") || "[]");
@@ -47,6 +53,12 @@ export async function createObservation(formData: FormData) {
     observed_on,
     level,
     note: note || null,
+    observed_fact: observed_fact || null,
+    development_direction: development_direction || null,
+    child_performance: child_performance || null,
+    teacher_conclusion: teacher_conclusion || null,
+    next_action: next_action || null,
+    methodology_note: methodology_note || null,
     stage,
   });
   if (error) throw new Error(error.message);
@@ -68,7 +80,9 @@ export async function createObservation(formData: FormData) {
     try {
       const { data: outcomeRows } = await supabase
         .from("observations")
-        .select("id, note, observed_on")
+        .select(
+          "id, note, observed_on, observed_fact, development_direction, child_performance, teacher_conclusion, next_action, methodology_note"
+        )
         .eq("child_id", child_id)
         .eq("outcome_id", outcome_id)
         .not("note", "is", null)
@@ -101,7 +115,13 @@ export async function createObservation(formData: FormData) {
             outcomeDescription: outcome.description,
             notes: notes.map((n) => ({
               observed_on: n.observed_on,
+              observed_fact: n.observed_fact,
+              development_direction: n.development_direction,
+              child_performance: n.child_performance,
               note: n.note,
+              teacher_conclusion: n.teacher_conclusion,
+              next_action: n.next_action,
+              methodology_note: n.methodology_note,
               media: mediaByObs.get(n.id) ?? [],
             })),
           });
@@ -182,9 +202,19 @@ export async function updateOutcomeConclusion(
   revalidatePath("/reports/outcomes");
 }
 
+export interface ObservationFields {
+  note: string;
+  observed_fact: string;
+  development_direction: string;
+  child_performance: string;
+  teacher_conclusion: string;
+  next_action: string;
+  methodology_note: string;
+}
+
 export async function updateObservation(
   id: string,
-  note: string,
+  fields: ObservationFields,
   media: { url: string; type: "image" | "video" }[],
   observedOn: string
 ) {
@@ -198,7 +228,16 @@ export async function updateObservation(
 
   const { data: obs, error } = await supabase
     .from("observations")
-    .update({ note: note.trim() || null, observed_on: observedOn })
+    .update({
+      note: fields.note.trim() || null,
+      observed_fact: fields.observed_fact.trim() || null,
+      development_direction: fields.development_direction.trim() || null,
+      child_performance: fields.child_performance.trim() || null,
+      teacher_conclusion: fields.teacher_conclusion.trim() || null,
+      next_action: fields.next_action.trim() || null,
+      methodology_note: fields.methodology_note.trim() || null,
+      observed_on: observedOn,
+    })
     .eq("id", id)
     .select("child_id, outcome_id")
     .single();
@@ -224,7 +263,9 @@ export async function generateOutcomeAssessmentNow(childId: string, outcomeId: s
 
   const { data: rows } = await supabase
     .from("observations")
-    .select("id, note, observed_on")
+    .select(
+      "id, note, observed_on, observed_fact, development_direction, child_performance, teacher_conclusion, next_action, methodology_note"
+    )
     .eq("child_id", childId)
     .eq("outcome_id", outcomeId)
     .order("observed_on", { ascending: true });
@@ -256,7 +297,13 @@ export async function generateOutcomeAssessmentNow(childId: string, outcomeId: s
     outcomeDescription: outcome.description,
     notes: notes.map((n) => ({
       observed_on: n.observed_on,
+      observed_fact: n.observed_fact,
+      development_direction: n.development_direction,
+      child_performance: n.child_performance,
       note: n.note,
+      teacher_conclusion: n.teacher_conclusion,
+      next_action: n.next_action,
+      methodology_note: n.methodology_note,
       media: mediaByObs.get(n.id) ?? [],
     })),
   });

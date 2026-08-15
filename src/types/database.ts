@@ -51,9 +51,73 @@ export interface Observation {
   teacher_id: string;
   observed_on: string;
   level: 1 | 2 | 3 | 4 | null;
+  observed_fact: string | null;
+  development_direction: string | null;
+  child_performance: string | null;
   note: string | null;
+  teacher_conclusion: string | null;
+  next_action: string | null;
+  methodology_note: string | null;
   created_at: string;
 }
+
+export const OBSERVATION_FIELDS: {
+  key: "observed_fact" | "development_direction" | "child_performance" | "note" | "teacher_conclusion" | "next_action" | "methodology_note";
+  letter: string;
+  label: string;
+  hint: string;
+  placeholder: string;
+}[] = [
+  {
+    key: "observed_fact",
+    letter: "А",
+    label: "Ажиглагдсан баримт",
+    hint: "Юу хийж байгаа, ямар орчинд байгаа бодит байдал",
+    placeholder: "Жишээ: Хүүхэд зургийн ширээнд суугаад өөрийн санаагаа цаасан дээр буулгаж эхлэв...",
+  },
+  {
+    key: "development_direction",
+    letter: "Б",
+    label: "Хөгжлийн чиглэл",
+    hint: "Энэ үйлдлээр ямар чадвар хөгжиж байгаа нь",
+    placeholder: "Жишээ: Өөрийн бодол төсөөллөөр зохиомжлон дүрслэх чадвар, бүтээлч сэтгэлгээ...",
+  },
+  {
+    key: "child_performance",
+    letter: "В",
+    label: "Хүүхдийн гүйцэтгэл",
+    hint: "Зурсан байдал, өнгө дүрс, шугамын зохицол",
+    placeholder: "Жишээ: Хуудасны төв хэсэгт гол обьект байрлуулж, тод өнгөөр ялган будсан...",
+  },
+  {
+    key: "note",
+    letter: "Г",
+    label: "Ажиглалтын тэмдэглэл",
+    hint: "Хүүхдийн өөрийн тайлбар, яриа",
+    placeholder: "Жишээ: 'Энэ бол миний мөрөөдлийн сансрын хөлөг' гэж тайлбарлав...",
+  },
+  {
+    key: "teacher_conclusion",
+    letter: "Д",
+    label: "Багшийн дүгнэлт",
+    hint: "Тухайн ажиглалтаар ажиглагдсан түвшин",
+    placeholder: "Жишээ: Санаагаа чөлөөтэй илэрхийлж, зохиомж гаргах чадвар сайн хөгжиж байна...",
+  },
+  {
+    key: "next_action",
+    letter: "Е",
+    label: "Цаашдын үйл ажиллагаа",
+    hint: "Багшийн үзүүлэх дэмжлэг",
+    placeholder: "Жишээ: Илүү нарийн хээ болон өнгөний уусах уусгалтыг туршиж үзүүлэх...",
+  },
+  {
+    key: "methodology_note",
+    letter: "Ё",
+    label: "Арга зүйн санал",
+    hint: "Арга зүйд тусгах санаа",
+    placeholder: "Жишээ: Бусад хүүхдүүдтэй туршлага солилцох боломж бүрдүүлэх...",
+  },
+];
 
 export interface ObservationMedia {
   id: string;
