@@ -12,7 +12,6 @@ const NAV_ITEMS = [
   { href: "/assessment", label: "Үнэлгээ" },
   { href: "/fitness", label: "Биеийн тамирын сорил" },
   { href: "/analysis", label: "Анализ дүгнэлт" },
-  { href: "/reports", label: "Тайлан тохиргоо" },
 ];
 
 export default function NavShell({

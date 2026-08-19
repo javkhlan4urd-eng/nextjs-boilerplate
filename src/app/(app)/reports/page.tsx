@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import DomainSettings from "@/components/DomainSettings";
 import PrintButton from "@/components/PrintButton";
@@ -69,10 +70,18 @@ export default async function ReportsPage({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="no-print text-xl font-semibold text-slate-900">Тайлан тохиргоо</h1>
-      <p className="no-print mt-1 text-sm text-slate-500">
-        Чиглэлийн тохиргоо хийх, тухайн хугацааны хөгжлийн тайланг үүсгэж хэвлэх/PDF татах.
-      </p>
+      <div className="no-print overflow-hidden rounded-3xl bg-gradient-to-br from-teal-500 to-cyan-400 p-6 text-white shadow-lg shadow-teal-200/60 sm:p-7">
+        <Link href="/assessment" className="text-sm font-medium text-white/80 hover:text-white hover:underline">
+          ← Үнэлгээ
+        </Link>
+        <p className="mt-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-white/80">
+          🖨️ Тайлан & тохиргоо
+        </p>
+        <h1 className="mt-1 text-2xl font-bold">Тайлан тохиргоо</h1>
+        <p className="mt-1.5 max-w-lg text-sm text-white/90">
+          Чиглэлийн тохиргоо хийх, тухайн хугацааны хөгжлийн тайланг үүсгэж хэвлэх/PDF татах.
+        </p>
+      </div>
 
       <div className="no-print mt-6">
         <DomainSettings domains={domainList} />
@@ -109,24 +118,26 @@ export default async function ReportsPage({
           <label className="block text-xs font-medium text-slate-500">Дуусах огноо</label>
           <input type="date" name="to" defaultValue={to} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
         </div>
-        <button type="submit" className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white">
+        <button
+          type="submit"
+          className="rounded-lg bg-gradient-to-r from-teal-500 to-cyan-400 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-95"
+        >
           Тайлан үүсгэх
         </button>
         <PrintButton />
       </form>
 
-      <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 print:border-0 print:p-0 print:shadow-none">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">
-              Хүүхдийн хөгжлийн үнэлгээний тайлан
-            </h2>
-            <p className="text-sm text-slate-500">
-              Хугацаа: {from} — {to}
-              {sp.group ? ` · ${groups?.find((g) => g.id === sp.group)?.name ?? ""}` : ""}
-            </p>
-          </div>
+      <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-100 print:border-0 print:shadow-none">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-teal-50 to-cyan-50 p-6 print:border-0 print:bg-white print:p-0">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Хүүхдийн хөгжлийн үнэлгээний тайлан
+          </h2>
+          <p className="text-sm text-slate-500">
+            Хугацаа: {from} — {to}
+            {sp.group ? ` · ${groups?.find((g) => g.id === sp.group)?.name ?? ""}` : ""}
+          </p>
         </div>
+        <div className="p-6 print:p-0">
 
         {domainList.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">Эхлээд дээрх хэсгээс чиглэл тохируулна уу.</p>
@@ -180,6 +191,7 @@ export default async function ReportsPage({
             </p>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
