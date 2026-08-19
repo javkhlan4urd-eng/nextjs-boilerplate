@@ -52,16 +52,18 @@ export default async function ChildReadinessPage({
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href="/assessment/result" className="text-sm font-medium text-indigo-600 hover:underline">
-        ← Буцах
-      </Link>
-      <h1 className="mt-2 text-xl font-semibold text-slate-900">
-        {formatChildName(child.first_name, child.last_name)} — Үр дүнгийн үнэлгээ
-      </h1>
-      <p className="mt-1 text-sm text-slate-500">
-        {group?.name}
-        {level ? ` · ${level}-р түвшин` : ""} — шалгуур бүрийг ажиглаад эзэмшсэн эсэхийг тэмдэглэнэ үү.
-      </p>
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 p-6 text-white shadow-lg shadow-orange-200/60">
+        <Link href="/assessment/result" className="text-sm font-medium text-white/80 hover:text-white hover:underline">
+          ← Буцах
+        </Link>
+        <h1 className="mt-1 text-xl font-bold">
+          {formatChildName(child.first_name, child.last_name)} — Үр дүнгийн үнэлгээ
+        </h1>
+        <p className="mt-1.5 text-sm text-amber-100">
+          {group?.name}
+          {level ? ` · ${level}-р түвшин` : ""} — шалгуур бүрийг ажиглаад эзэмшсэн эсэхийг тэмдэглэнэ үү.
+        </p>
+      </div>
 
       {!level ? (
         <p className="mt-6 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">

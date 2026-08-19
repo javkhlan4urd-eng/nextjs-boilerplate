@@ -66,18 +66,17 @@ export default async function FitnessReportPage({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="no-print flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">
-            Биеийн тамирын сорил — үр дүн, анализ
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Бүлэг бүрээр эсвэл бүх бүлгийн нэгдсэн байдлаар сорилын үр дүнг харна.
-          </p>
-        </div>
+      <div className="no-print overflow-hidden rounded-3xl bg-gradient-to-br from-rose-600 via-red-500 to-orange-500 p-6 text-white shadow-lg shadow-rose-200/60 sm:p-7">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-rose-100">
+          🏃 Биеийн тамир
+        </p>
+        <h1 className="mt-1 text-2xl font-bold">Үр дүн, анализ</h1>
+        <p className="mt-1.5 max-w-lg text-sm text-rose-100">
+          Бүлэг бүрээр эсвэл бүх бүлгийн нэгдсэн байдлаар сорилын үр дүнг харна.
+        </p>
       </div>
 
-      <form className="no-print mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3">
+      <form className="no-print mt-6 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3">
         <div>
           <label className="block text-xs font-medium text-slate-500">Хичээлийн жил</label>
           <select name="year" defaultValue={sp.year ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
@@ -109,19 +108,23 @@ export default async function FitnessReportPage({
           <label className="block text-xs font-medium text-slate-500">Дуусах огноо</label>
           <input type="date" name="to" defaultValue={to} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
         </div>
-        <button type="submit" className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white">
+        <button
+          type="submit"
+          className="rounded-lg bg-gradient-to-r from-rose-600 to-orange-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-95"
+        >
           Тайлан үүсгэх
         </button>
         <PrintButton />
       </form>
 
-      <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 print:border-0 print:p-0 print:shadow-none">
-        <div>
+      <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-100 print:border-0 print:shadow-none">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-rose-50 to-orange-50 p-6 print:border-0 print:bg-white print:p-0">
           <h2 className="text-lg font-semibold text-slate-900">Биеийн тамирын сорилын тайлан</h2>
           <p className="text-sm text-slate-500">
             {groupLabel}{yearLabel} · Хугацаа: {from} — {to} · Нийт сорил: {rows.length}
           </p>
         </div>
+        <div className="p-6 print:p-0">
 
         {rows.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">
@@ -187,6 +190,7 @@ export default async function FitnessReportPage({
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   );

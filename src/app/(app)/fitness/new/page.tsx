@@ -35,10 +35,15 @@ export default async function NewFitnessTestPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-xl font-semibold text-slate-900">Биеийн тамирын сорил нэмэх</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Хурд, Хүч, Авхаалж самбаа, Тэнцвэрийн сорилын үзүүлэлтийг оруулбал үнэлгээг автоматаар тооцно.
-      </p>
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-rose-600 via-red-500 to-orange-500 p-6 text-white shadow-lg shadow-rose-200/60">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-rose-100">
+          🏃 Биеийн тамир
+        </p>
+        <h1 className="mt-1 text-xl font-bold">Сорил нэмэх</h1>
+        <p className="mt-1.5 text-sm text-rose-100">
+          Хурд, Хүч, Авхаалж самбаа, Тэнцвэрийн сорилын үзүүлэлтийг оруулбал үнэлгээг автоматаар тооцно.
+        </p>
+      </div>
       <div className="mt-6">
         <FitnessForm action={createFitnessTest} childOptions={childOptions} defaultChildId={child} />
       </div>

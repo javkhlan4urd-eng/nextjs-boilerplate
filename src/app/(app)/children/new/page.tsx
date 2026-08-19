@@ -21,8 +21,13 @@ export default async function NewChildPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-xl font-semibold text-slate-900">Хүүхэд нэмэх</h1>
-      <p className="mt-1 text-sm text-slate-500">Хүүхдийн болон эцэг эхийн мэдээллийг бөглөнө үү.</p>
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-teal-500 p-6 text-white shadow-lg shadow-indigo-200/60">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-indigo-100">
+          🧒 Хүүхэд нэмэх
+        </p>
+        <h1 className="mt-1 text-xl font-bold">Хүүхэд нэмэх</h1>
+        <p className="mt-1.5 text-sm text-indigo-100">Хүүхдийн болон эцэг эхийн мэдээллийг бөглөнө үү.</p>
+      </div>
       <div className="mt-6">
         <ChildForm
           action={createChild}

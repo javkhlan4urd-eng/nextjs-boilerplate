@@ -135,10 +135,15 @@ export default async function AnalysisPage({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="text-xl font-semibold text-slate-900">Анализ дүгнэлт</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Суралцахуйн 7 чиглэлээр хийсэн ажиглалтын сар, улирлын дүн шинжилгээ, харьцуулалт.
-      </p>
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-fuchsia-600 via-purple-500 to-violet-500 p-6 text-white shadow-lg shadow-purple-200/60 sm:p-7">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-purple-100">
+          📊 Анализ
+        </p>
+        <h1 className="mt-1 text-2xl font-bold">Анализ дүгнэлт</h1>
+        <p className="mt-1.5 max-w-lg text-sm text-purple-100">
+          Суралцахуйн 7 чиглэлээр хийсэн ажиглалтын сар, улирлын дүн шинжилгээ, харьцуулалт.
+        </p>
+      </div>
 
       <form className="mt-4 flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3">
         {schoolYears.length > 0 && (
@@ -179,7 +184,7 @@ export default async function AnalysisPage({
           <option value="month">Сараар харьцуулах</option>
           <option value="quarter">Улирлаар харьцуулах</option>
         </select>
-        <button type="submit" className="rounded-lg bg-slate-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-900">
+        <button type="submit" className="rounded-lg bg-gradient-to-r from-fuchsia-600 to-violet-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:opacity-95">
           Шүүх
         </button>
       </form>
@@ -230,7 +235,7 @@ export default async function AnalysisPage({
                       </option>
                     ))}
                   </select>
-                  <button type="submit" className="rounded-lg bg-slate-800 px-2 py-1 text-xs font-medium text-white">
+                  <button type="submit" className="rounded-lg bg-gradient-to-r from-fuchsia-600 to-violet-500 px-2 py-1 text-xs font-semibold text-white shadow-sm hover:opacity-95">
                     Харьцуулах
                   </button>
                 </form>
@@ -281,7 +286,7 @@ export default async function AnalysisPage({
                   </option>
                 ))}
               </select>
-              <button type="submit" className="rounded-lg bg-slate-800 px-2 py-1 text-xs font-medium text-white">
+              <button type="submit" className="rounded-lg bg-gradient-to-r from-fuchsia-600 to-violet-500 px-2 py-1 text-xs font-semibold text-white shadow-sm hover:opacity-95">
                 Харьцуулах
               </button>
             </form>

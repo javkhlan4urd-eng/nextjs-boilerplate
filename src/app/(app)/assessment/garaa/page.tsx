@@ -81,19 +81,24 @@ export default async function BaselineAssessmentPage({
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Гарааны үнэлгээ</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Хичээлийн жилийн эхэнд суралцахуйн 7 чиглэл тус бүрээр анхны түвшинг тогтооно.
-          </p>
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-500 p-6 text-white shadow-lg shadow-indigo-200/60 sm:p-7">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-indigo-100">
+              🚩 Гарааны үнэлгээ
+            </p>
+            <h1 className="mt-1 text-2xl font-bold">Гарааны үнэлгээ</h1>
+            <p className="mt-1.5 max-w-lg text-sm text-indigo-100">
+              Хичээлийн жилийн эхэнд суралцахуйн 7 чиглэл тус бүрээр анхны түвшинг тогтооно.
+            </p>
+          </div>
+          <Link
+            href={group ? `/assessment/garaa/new?group=${group}` : "/assessment/garaa/new"}
+            className="whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-50"
+          >
+            + Гарааны үнэлгээ нэмэх
+          </Link>
         </div>
-        <Link
-          href={group ? `/assessment/garaa/new?group=${group}` : "/assessment/garaa/new"}
-          className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95"
-        >
-          + Гарааны үнэлгээ нэмэх
-        </Link>
       </div>
 
       {groups && groups.length > 0 && (

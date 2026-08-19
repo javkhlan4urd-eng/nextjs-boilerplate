@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ChildDetail from "@/components/ChildDetail";
 import { LEVEL_LABELS } from "@/types/database";
-import { domainColor, LEVEL_STYLES } from "@/lib/colors";
+import { domainColor, LEVEL_STYLES, groupTheme } from "@/lib/colors";
+import { formatChildName } from "@/lib/childName";
 
 export default async function ChildPage({
   params,
@@ -13,8 +14,15 @@ export default async function ChildPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: child } = await supabase.from("children").select("*").eq("id", id).single();
+  const { data: child } = await supabase
+    .from("children")
+    .select("*, groups(name, level)")
+    .eq("id", id)
+    .single();
   if (!child) notFound();
+
+  const group = (child as unknown as { groups: { name: string; level: number | null } | null }).groups;
+  const theme = groupTheme(group?.level);
 
   const { data: observations } = await supabase
     .from("observations")
@@ -24,11 +32,20 @@ export default async function ChildPage({
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href="/children" className="text-sm text-indigo-600 hover:underline">
-        ← Хүүхдүүд
-      </Link>
+      <div className={`overflow-hidden rounded-3xl bg-gradient-to-br ${theme.from} ${theme.to} p-6 text-white shadow-lg`}>
+        <Link
+          href={group?.name ? `/children?group=${child.group_id}` : "/children"}
+          className="text-sm font-medium text-white/80 hover:text-white hover:underline"
+        >
+          ← {group?.name ?? "Хүүхдүүд"}
+        </Link>
+        <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold">
+          <span>{theme.emoji}</span>
+          {formatChildName(child.first_name, child.last_name)}
+        </h1>
+      </div>
 
-      <div className="mt-3">
+      <div className="mt-4">
         <ChildDetail child={child} />
       </div>
 
@@ -36,7 +53,7 @@ export default async function ChildPage({
         <h2 className="text-lg font-semibold text-slate-900">Ажиглалтын түүх</h2>
         <Link
           href={`/assessment/yavts/new?child=${id}`}
-          className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95"
+          className={`rounded-lg bg-gradient-to-r ${theme.from} ${theme.to} px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-95`}
         >
           + Ажиглалт нэмэх
         </Link>

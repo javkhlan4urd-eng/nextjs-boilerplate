@@ -53,10 +53,15 @@ export default async function NewProgressAssessmentPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-xl font-semibold text-slate-900">Ажиглалт нэмэх</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Суралцахуйн чиглэлээр явцын түвшинг тогтоож, баримт нотолгоо болгож зураг хавсаргана уу.
-      </p>
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-500 to-teal-500 p-6 text-white shadow-lg shadow-indigo-200/60">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-indigo-100">
+          🔄 Явцын үнэлгээ
+        </p>
+        <h1 className="mt-1 text-xl font-bold">Ажиглалт нэмэх</h1>
+        <p className="mt-1.5 text-sm text-indigo-100">
+          Суралцахуйн чиглэлээр явцын түвшинг тогтоож, баримт нотолгоо болгож зураг хавсаргана уу.
+        </p>
+      </div>
       <div className="mt-6">
         <ObservationForm
           action={createObservation}

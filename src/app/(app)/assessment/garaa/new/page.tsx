@@ -53,10 +53,15 @@ export default async function NewBaselineAssessmentPage({
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-xl font-semibold text-slate-900">Гарааны үнэлгээ нэмэх</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Суралцахуйн чиглэлээр анхны түвшинг тогтоож, баримт нотолгоо болгож зураг хавсаргана уу.
-      </p>
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-500 p-6 text-white shadow-lg shadow-indigo-200/60">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-indigo-100">
+          🚩 Гарааны үнэлгээ
+        </p>
+        <h1 className="mt-1 text-xl font-bold">Гарааны үнэлгээ нэмэх</h1>
+        <p className="mt-1.5 text-sm text-indigo-100">
+          Суралцахуйн чиглэлээр анхны түвшинг тогтоож, баримт нотолгоо болгож зураг хавсаргана уу.
+        </p>
+      </div>
       <div className="mt-6">
         <ObservationForm
           action={createObservation}

@@ -61,26 +61,31 @@ export default async function FitnessPage({
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Биеийн тамирын сорил</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Хурд, Хүч, Авхаалж самбаа, Тэнцвэрийн сорилын үр дүн.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href={reportHref}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            📊 Тайлан, анализ
-          </Link>
-          <Link
-            href={newHref}
-            className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95"
-          >
-            + Сорил нэмэх
-          </Link>
+      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-rose-600 via-red-500 to-orange-500 p-6 text-white shadow-lg shadow-rose-200/60 sm:p-7">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-rose-100">
+              🏃 Биеийн тамир
+            </p>
+            <h1 className="mt-1 text-2xl font-bold">Биеийн тамирын сорил</h1>
+            <p className="mt-1.5 max-w-lg text-sm text-rose-100">
+              Хурд, Хүч, Авхаалж самбаа, Тэнцвэрийн сорилын үр дүн.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link
+              href={reportHref}
+              className="whitespace-nowrap rounded-full bg-white/15 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-white/30 hover:bg-white/25"
+            >
+              📊 Тайлан, анализ
+            </Link>
+            <Link
+              href={newHref}
+              className="whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-50"
+            >
+              + Сорил нэмэх
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -92,7 +97,7 @@ export default async function FitnessPage({
               href={group ? `/fitness?group=${group}` : "/fitness"}
               className={`rounded-full px-3 py-1 text-sm font-medium ${
                 !year
-                  ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
+                  ? "bg-gradient-to-r from-rose-600 to-orange-500 text-white shadow-sm"
                   : "bg-white text-slate-600 border border-slate-200"
               }`}
             >
@@ -104,7 +109,7 @@ export default async function FitnessPage({
                 href={group ? `/fitness?group=${group}&year=${y}` : `/fitness?year=${y}`}
                 className={`rounded-full px-3 py-1 text-sm font-medium ${
                   year === y
-                    ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
+                    ? "bg-gradient-to-r from-rose-600 to-orange-500 text-white shadow-sm"
                     : "bg-white text-slate-600 border border-slate-200"
                 }`}
               >
@@ -123,7 +128,7 @@ export default async function FitnessPage({
               href={year ? `/fitness?year=${year}` : "/fitness"}
               className={`rounded-full px-3 py-1 text-sm font-medium ${
                 !group
-                  ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
+                  ? "bg-gradient-to-r from-rose-600 to-orange-500 text-white shadow-sm"
                   : "bg-white text-slate-600 border border-slate-200"
               }`}
             >
@@ -135,7 +140,7 @@ export default async function FitnessPage({
                 href={year ? `/fitness?group=${g.id}&year=${year}` : `/fitness?group=${g.id}`}
                 className={`rounded-full px-3 py-1 text-sm font-medium ${
                   group === g.id
-                    ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
+                    ? "bg-gradient-to-r from-rose-600 to-orange-500 text-white shadow-sm"
                     : "bg-white text-slate-600 border border-slate-200"
                 }`}
               >

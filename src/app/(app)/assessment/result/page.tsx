@@ -129,17 +129,18 @@ export default async function ResultAssessmentPage({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="no-print flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Үр дүнгийн үнэлгээ</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            "Суралцагчийн хөгжлийн үнэлгээний шалгуур"-ын дагуу хүүхэд бүрийн насны түвшинд нийцсэн
-            Мэдлэг, Чадвар, Төлөвшлийн шалгуураар дүгнэнэ.
-          </p>
-        </div>
+      <div className="no-print overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 p-6 text-white shadow-lg shadow-orange-200/60 sm:p-7">
+        <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-amber-100">
+          🏁 Үр дүнгийн үнэлгээ
+        </p>
+        <h1 className="mt-1 text-2xl font-bold">Үр дүнгийн үнэлгээ</h1>
+        <p className="mt-1.5 max-w-lg text-sm text-amber-100">
+          "Суралцагчийн хөгжлийн үнэлгээний шалгуур"-ын дагуу хүүхэд бүрийн насны түвшинд нийцсэн
+          Мэдлэг, Чадвар, Төлөвшлийн шалгуураар дүгнэнэ.
+        </p>
       </div>
 
-      <form className="no-print mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3">
+      <form className="no-print mt-6 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3">
         {schoolYears.length > 0 && (
           <div>
             <label className="block text-xs font-medium text-slate-500">Хичээлийн жил</label>
@@ -177,19 +178,25 @@ export default async function ResultAssessmentPage({
             </AutoSubmitSelect>
           </div>
         )}
-        <button type="submit" className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white">
+        <button
+          type="submit"
+          className="rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-95"
+        >
           Шүүх
         </button>
         <PrintButton />
       </form>
 
-      <div className="mt-8 rounded-xl border border-slate-200 bg-white p-6 print:border-0 print:p-0 print:shadow-none">
+      <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-100 print:border-0 print:shadow-none">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50 p-6 print:border-0 print:bg-white print:p-0">
         <h2 className="text-lg font-semibold text-slate-900">Нэгдсэн тойм</h2>
         <p className="text-sm text-slate-500">
           {groupLabel}
           {yearLabel}
           {effectiveMonth ? ` · ${formatMonthLabel(effectiveMonth)}` : ""} · Хамрагдсан хүүхэд: {children.length}
         </p>
+        </div>
+        <div className="p-6 print:p-0">
 
         {children.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">Тохирох хүүхэд олдсонгүй.</p>
@@ -203,7 +210,7 @@ export default async function ResultAssessmentPage({
                   href={`?${new URLSearchParams({ ...(sp.group ? { group: sp.group } : {}), ...(sp.schoolYear ? { schoolYear: sp.schoolYear } : {}), ...(sp.month ? { month: sp.month } : {}) }).toString()}`}
                   className={`rounded-full px-3 py-1 text-xs font-medium ${
                     !selectedCategory
-                      ? "bg-slate-800 text-white shadow-sm"
+                      ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm"
                       : "bg-white text-slate-600 border border-slate-200"
                   }`}
                 >
@@ -216,7 +223,7 @@ export default async function ResultAssessmentPage({
                     href={`?${new URLSearchParams({ ...(sp.group ? { group: sp.group } : {}), ...(sp.schoolYear ? { schoolYear: sp.schoolYear } : {}), ...(sp.month ? { month: sp.month } : {}), category: c.category }).toString()}`}
                     className={`rounded-full px-3 py-1 text-xs font-medium ${
                       selectedCategory === c.category
-                        ? "bg-slate-800 text-white shadow-sm"
+                        ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-sm"
                         : "bg-white text-slate-600 border border-slate-200"
                     }`}
                   >
@@ -289,6 +296,7 @@ export default async function ResultAssessmentPage({
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   );
