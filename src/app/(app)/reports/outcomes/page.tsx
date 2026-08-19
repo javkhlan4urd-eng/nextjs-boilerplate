@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import PrintButton from "@/components/PrintButton";
 import { CONCLUSION_THRESHOLD } from "@/lib/outcomeConclusion";
@@ -10,7 +11,7 @@ import { saveOutcomeSummary, generateOutcomeSummaryDraft } from "./actions";
 export default async function OutcomeReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ group?: string; schoolYear?: string; child?: string }>;
+  searchParams: Promise<{ group?: string; schoolYear?: string; child?: string; domain?: string }>;
 }) {
   const sp = await searchParams;
   const supabase = await createClient();
@@ -103,6 +104,23 @@ export default async function OutcomeReportPage({
     .sort((a, b) => b.withConclusion / b.total - a.withConclusion / a.total)[0];
 
   const selectedChild = sp.child ? children.find((c) => c.id === sp.child) : null;
+  const selectedDomain = sp.domain ? domainList.find((d) => d.id === sp.domain) : null;
+
+  const domainChildSummaries = selectedDomain
+    ? children.map((child) => {
+        const childLevel = child.groups?.level ?? null;
+        const applicableOutcomes = outcomes.filter(
+          (o) => o.domain_id === selectedDomain.id && (!childLevel || !o.level || o.level === childLevel)
+        );
+        const total = applicableOutcomes.length;
+        const achieved = applicableOutcomes.filter((o) => {
+          const level = conclusionMap.get(`${child.id}|${o.id}`)?.level;
+          return level !== null && level !== undefined && (level / 4) * 100 >= 70;
+        }).length;
+        const pct = total > 0 ? Math.round((achieved / total) * 100) : 0;
+        return { child, total, achieved, pct, verdict: total > 0 ? readinessVerdict(pct) : null };
+      })
+    : [];
 
   let existingSummary = "";
   if (sp.group) {
@@ -218,8 +236,20 @@ export default async function OutcomeReportPage({
           {coverageByDomain.map((c, i) => {
             const pct = c.total > 0 ? Math.round((c.withConclusion / c.total) * 100) : 0;
             const palette = domainColor(i);
+            const d = domainList[i];
+            const params = new URLSearchParams({
+              ...(sp.group ? { group: sp.group } : {}),
+              ...(sp.schoolYear ? { schoolYear: sp.schoolYear } : {}),
+              domain: d.id,
+            });
             return (
-              <div key={c.domain} className="rounded-xl border border-slate-200 p-4">
+              <Link
+                key={c.domain}
+                href={`?${params.toString()}`}
+                className={`block rounded-xl border p-4 transition-colors hover:border-indigo-300 ${
+                  selectedDomain?.id === d.id ? "border-indigo-400 bg-indigo-50/50" : "border-slate-200"
+                }`}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span
@@ -243,7 +273,7 @@ export default async function OutcomeReportPage({
                 <p className="mt-1 text-xs text-slate-400">
                   {pct}% хамрагдсан ({c.withConclusion}/{c.total})
                 </p>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -349,9 +379,64 @@ export default async function OutcomeReportPage({
               })}
             </div>
           </div>
+        ) : selectedDomain ? (
+          <div className="mt-8">
+            <h3 className="text-base font-semibold text-slate-900">
+              {selectedDomain.name} — хүүхэд тус бүрийн үр дүн
+            </h3>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[480px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                    <th className="py-2 pr-3">Хүүхэд</th>
+                    <th className="px-2 py-2 text-center">Эзэмшсэн</th>
+                    <th className="px-2 py-2 text-center">Хувь</th>
+                    <th className="px-2 py-2 text-center">Дүгнэлт</th>
+                    <th className="no-print px-2 py-2 text-center">Үйлдэл</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {domainChildSummaries.map(({ child, total, achieved, pct, verdict }) => {
+                    const vs = verdict ? verdictStyle(verdict) : null;
+                    const params = new URLSearchParams({
+                      ...(sp.group ? { group: sp.group } : {}),
+                      ...(sp.schoolYear ? { schoolYear: sp.schoolYear } : {}),
+                      child: child.id,
+                    });
+                    return (
+                      <tr key={child.id} className="border-b border-slate-100">
+                        <td className="py-2 pr-3 font-medium text-slate-800">
+                          {formatChildName(child.first_name, child.last_name)}
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          {total > 0 ? `${achieved}/${total}` : "—"}
+                        </td>
+                        <td className="px-2 py-2 text-center">{total > 0 ? `${pct}%` : "—"}</td>
+                        <td className="px-2 py-2 text-center">
+                          {verdict && vs ? (
+                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${vs.bg} ${vs.text}`}>
+                              {verdict}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400">—</span>
+                          )}
+                        </td>
+                        <td className="no-print px-2 py-2 text-center">
+                          <Link href={`?${params.toString()}`} className="text-xs font-medium text-indigo-600 hover:underline">
+                            Дэлгэрэнгүй
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         ) : (
           <p className="mt-6 text-sm text-slate-500">
-            Тодорхой хүүхдийг сонговол чиглэл бүрийн СҮД-ийн дэлгэрэнгүй дүгнэлтийг текстээр харуулна.
+            Дээрх чиглэлүүдийн аль нэгийг сонговол тухайн чиглэлийн бүх хүүхдийн үр дүнг, эсвэл тодорхой
+            хүүхдийг сонговол чиглэл бүрийн СҮД-ийн дэлгэрэнгүй дүгнэлтийг текстээр харуулна.
           </p>
         )}
       </div>

@@ -16,9 +16,10 @@ function formatMonthLabel(month: string) {
 export default async function ResultAssessmentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ group?: string; schoolYear?: string; month?: string }>;
+  searchParams: Promise<{ group?: string; schoolYear?: string; month?: string; category?: string }>;
 }) {
   const sp = await searchParams;
+  const selectedCategory = sp.category && (CATEGORY_ORDER as readonly string[]).includes(sp.category) ? sp.category : null;
   const supabase = await createClient();
   const {
     data: { user },
@@ -87,7 +88,8 @@ export default async function ResultAssessmentPage({
 
   const childSummaries = children.map((child) => {
     const level = child.groups?.level ?? null;
-    const levelCriteria = level ? criteria.filter((c) => c.level === level) : [];
+    let levelCriteria = level ? criteria.filter((c) => c.level === level) : [];
+    if (selectedCategory) levelCriteria = levelCriteria.filter((c) => c.category === selectedCategory);
     const total = levelCriteria.length;
     const achieved = levelCriteria.filter((c) => achievedSet.has(`${child.id}|${c.id}`)).length;
     const pct = total > 0 ? Math.round((achieved / total) * 100) : 0;
@@ -191,17 +193,38 @@ export default async function ResultAssessmentPage({
             <div className="mt-6 rounded-xl border border-slate-200 p-4">
               <h3 className="text-sm font-semibold text-slate-800">Ангилал тус бүрийн эзэмшилт</h3>
               <CategoryAchievedBar data={categoryTotals} />
-              <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+              <div className="no-print mt-3 flex flex-wrap gap-2">
+                <Link
+                  href={`?${new URLSearchParams({ ...(sp.group ? { group: sp.group } : {}), ...(sp.schoolYear ? { schoolYear: sp.schoolYear } : {}), ...(sp.month ? { month: sp.month } : {}) }).toString()}`}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    !selectedCategory
+                      ? "bg-slate-800 text-white shadow-sm"
+                      : "bg-white text-slate-600 border border-slate-200"
+                  }`}
+                >
+                  Нийт ({categoryTotals.reduce((s, c) => s + c.achieved, 0)}/
+                  {categoryTotals.reduce((s, c) => s + c.total, 0)})
+                </Link>
                 {categoryTotals.map((c) => (
-                  <span key={c.category}>
-                    {c.category}: {c.achieved}/{c.total}
-                  </span>
+                  <Link
+                    key={c.category}
+                    href={`?${new URLSearchParams({ ...(sp.group ? { group: sp.group } : {}), ...(sp.schoolYear ? { schoolYear: sp.schoolYear } : {}), ...(sp.month ? { month: sp.month } : {}), category: c.category }).toString()}`}
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${
+                      selectedCategory === c.category
+                        ? "bg-slate-800 text-white shadow-sm"
+                        : "bg-white text-slate-600 border border-slate-200"
+                    }`}
+                  >
+                    {c.category} ({c.achieved}/{c.total})
+                  </Link>
                 ))}
               </div>
             </div>
 
             <div className="mt-6 overflow-x-auto">
-              <h3 className="text-sm font-semibold text-slate-800">Хүүхэд тус бүрийн үр дүн</h3>
+              <h3 className="text-sm font-semibold text-slate-800">
+                {selectedCategory ? `${selectedCategory} — хүүхэд тус бүрийн үр дүн` : "Хүүхэд тус бүрийн үр дүн"}
+              </h3>
               <table className="mt-3 w-full min-w-[560px] border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
