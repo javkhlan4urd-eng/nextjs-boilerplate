@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { SummaryDraftResult, SaveResult } from "@/lib/summaryDraft";
 
 export default function GroupSummaryEditor({
   groupId,
@@ -10,8 +11,8 @@ export default function GroupSummaryEditor({
 }: {
   groupId: string;
   initialContent: string;
-  generateAction: (groupId: string) => Promise<string>;
-  saveAction: (groupId: string, content: string) => Promise<void>;
+  generateAction: (groupId: string) => Promise<SummaryDraftResult>;
+  saveAction: (groupId: string, content: string) => Promise<SaveResult>;
 }) {
   const [content, setContent] = useState(initialContent);
   const [generating, setGenerating] = useState(false);
@@ -23,10 +24,14 @@ export default function GroupSummaryEditor({
     setGenerating(true);
     setError(null);
     try {
-      const draft = await generateAction(groupId);
-      setContent(draft);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "AI дүгнэлт бэлтгэхэд алдаа гарлаа");
+      const result = await generateAction(groupId);
+      if (result.ok) {
+        setContent(result.content);
+      } else {
+        setError(result.error);
+      }
+    } catch {
+      setError("AI дүгнэлт бэлтгэхэд алдаа гарлаа");
     } finally {
       setGenerating(false);
     }
@@ -36,10 +41,14 @@ export default function GroupSummaryEditor({
     setSaving(true);
     setError(null);
     try {
-      await saveAction(groupId, content);
-      setSavedAt(Date.now());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Хадгалахад алдаа гарлаа");
+      const result = await saveAction(groupId, content);
+      if (result.ok) {
+        setSavedAt(Date.now());
+      } else {
+        setError(result.error);
+      }
+    } catch {
+      setError("Хадгалахад алдаа гарлаа");
     } finally {
       setSaving(false);
     }

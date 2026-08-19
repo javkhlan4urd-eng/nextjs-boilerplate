@@ -4,37 +4,51 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { buildOutcomeSummaryPrompt, type OutcomeDomainStat } from "@/lib/outcomeSummaryAI";
 import { callGemini } from "@/lib/observationAI";
+import type { SummaryDraftResult, SaveResult } from "@/lib/summaryDraft";
 
-export async function saveOutcomeSummary(groupId: string, content: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Нэвтрээгүй байна");
+export async function saveOutcomeSummary(groupId: string, content: string): Promise<SaveResult> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { ok: false, error: "Нэвтрээгүй байна" };
 
-  const { error } = await supabase.from("outcome_summaries").upsert(
-    {
-      group_id: groupId,
-      teacher_id: user.id,
-      content,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "group_id" }
-  );
-  if (error) throw new Error(error.message);
+    const { error } = await supabase.from("outcome_summaries").upsert(
+      {
+        group_id: groupId,
+        teacher_id: user.id,
+        content,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "group_id" }
+    );
+    if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/reports/outcomes");
+    revalidatePath("/reports/outcomes");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Хадгалахад алдаа гарлаа" };
+  }
 }
 
-export async function generateOutcomeSummaryDraft(groupId: string): Promise<string> {
+export async function generateOutcomeSummaryDraft(groupId: string): Promise<SummaryDraftResult> {
+  try {
+    return await generateOutcomeSummaryDraftInner(groupId);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "AI дүгнэлт бэлтгэхэд алдаа гарлаа" };
+  }
+}
+
+async function generateOutcomeSummaryDraftInner(groupId: string): Promise<SummaryDraftResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Нэвтрээгүй байна");
+  if (!user) return { ok: false, error: "Нэвтрээгүй байна" };
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("AI тохиргоо дутуу байна");
+  if (!apiKey) return { ok: false, error: "AI тохиргоо дутуу байна" };
 
   const { data: group } = await supabase
     .from("groups")
@@ -42,14 +56,14 @@ export async function generateOutcomeSummaryDraft(groupId: string): Promise<stri
     .eq("id", groupId)
     .eq("teacher_id", user.id)
     .single();
-  if (!group) throw new Error("Бүлэг олдсонгүй");
+  if (!group) return { ok: false, error: "Бүлэг олдсонгүй" };
 
   const { data: childrenRaw } = await supabase
     .from("children")
     .select("id")
     .eq("group_id", groupId);
   const childIds = (childrenRaw ?? []).map((c) => c.id);
-  if (childIds.length === 0) throw new Error("Энэ бүлэгт хүүхэд алга байна");
+  if (childIds.length === 0) return { ok: false, error: "Энэ бүлэгт хүүхэд алга байна" };
 
   const { data: domains } = await supabase
     .from("learning_domains")
@@ -113,5 +127,6 @@ export async function generateOutcomeSummaryDraft(groupId: string): Promise<stri
     overallPct,
   });
 
-  return callGemini(apiKey, prompt);
+  const content = await callGemini(apiKey, prompt);
+  return { ok: true, content };
 }
