@@ -10,10 +10,10 @@ import {
 import {
   availableReadinessYears,
   compareReadinessByYear,
-  type ReadinessCheckRow,
   type CriterionMeta,
   type ChildLevelMeta,
 } from "@/lib/readinessAnalysis";
+import { fetchAllAchievedChecks } from "@/lib/readiness";
 import { DomainRadar, MonthlyTrend, PeriodComparisonBar, ReadinessYearComparisonBar } from "@/components/AnalysisCharts";
 import { formatChildName } from "@/lib/childName";
 
@@ -109,15 +109,7 @@ export default async function AnalysisPage({
     .eq("teacher_id", user!.id);
   const criteria: CriterionMeta[] = criteriaRaw ?? [];
 
-  let readinessChecks: ReadinessCheckRow[] = [];
-  if (scopedChildIds.length > 0) {
-    const { data: checksRaw } = await supabase
-      .from("readiness_checks")
-      .select("child_id, criterion_id, checked_on")
-      .in("child_id", scopedChildIds)
-      .eq("achieved", true);
-    readinessChecks = checksRaw ?? [];
-  }
+  const readinessChecks = await fetchAllAchievedChecks(supabase, scopedChildIds);
 
   const readinessChildren: ChildLevelMeta[] = children
     .filter((c) => scopedChildIds.includes(c.id))

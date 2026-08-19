@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { CATEGORY_ORDER, readinessVerdict, verdictStyle } from "@/lib/readiness";
+import { CATEGORY_ORDER, readinessVerdict, verdictStyle, fetchAllAchievedChecks } from "@/lib/readiness";
 import { CategoryAchievedBar } from "@/components/OutcomeCharts";
 import PrintButton from "@/components/PrintButton";
 import { formatChildName } from "@/lib/childName";
@@ -55,15 +55,7 @@ export default async function ResultAssessmentPage({
   const criteria = criteriaRaw ?? [];
 
   const childIds = children.map((c) => c.id);
-  let checks: { child_id: string; criterion_id: string; achieved: boolean; checked_on: string }[] = [];
-  if (childIds.length > 0) {
-    const { data } = await supabase
-      .from("readiness_checks")
-      .select("child_id, criterion_id, achieved, checked_on")
-      .in("child_id", childIds)
-      .eq("achieved", true);
-    checks = data ?? [];
-  }
+  const checks = await fetchAllAchievedChecks(supabase, childIds);
 
   // A single "effective month" only makes sense when scoped to one group — different
   // groups are commonly assessed in entirely different months/years (e.g. a group's
