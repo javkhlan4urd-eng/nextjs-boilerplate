@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { LEVEL_LABELS } from "@/types/database";
-import { domainColor, LEVEL_STYLES } from "@/lib/colors";
+import { domainColor, LEVEL_STYLES, groupTheme } from "@/lib/colors";
 import DeleteObservationButton from "@/components/DeleteObservationButton";
 import { formatChildName } from "@/lib/childName";
 
@@ -24,9 +24,76 @@ export default async function ProgressAssessmentPage({
 
   const { data: groups } = await supabase
     .from("groups")
-    .select("id, name")
+    .select("id, name, level")
     .eq("teacher_id", user!.id)
     .order("name");
+
+  if (!group) {
+    const { data: obsForCount } = await supabase
+      .from("observations")
+      .select("id, children!inner(group_id, groups!inner(teacher_id))")
+      .eq("children.groups.teacher_id", user!.id)
+      .or("stage.eq.yavts,stage.is.null");
+
+    const obsCountByGroup: Record<string, number> = {};
+    for (const o of obsForCount ?? []) {
+      const gid = (o as unknown as { children: { group_id: string } }).children?.group_id;
+      if (gid) obsCountByGroup[gid] = (obsCountByGroup[gid] ?? 0) + 1;
+    }
+
+    return (
+      <div className="mx-auto max-w-4xl">
+        <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-500 to-teal-500 p-6 text-white shadow-lg shadow-indigo-200/60 sm:p-7">
+          <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-indigo-100">
+            🔄 Тогтмол ажиглалт
+          </p>
+          <h1 className="mt-1 text-2xl font-bold">Бүлгээ сонгоно уу</h1>
+          <p className="mt-1.5 max-w-lg text-sm text-indigo-100">
+            Хүүхдийн ажиглалтыг харахын тулд эхлээд бүлгээ сонгоно уу.
+          </p>
+        </div>
+
+        {groups && groups.length > 0 ? (
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {groups.map((g) => {
+              const theme = groupTheme(g.level);
+              return (
+                <Link
+                  key={g.id}
+                  href={`/assessment/yavts?group=${g.id}`}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-100 transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <div className={`h-2 w-full bg-gradient-to-r ${theme.from} ${theme.to}`} />
+                  <div className="flex items-center justify-between gap-2 p-5">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${theme.from} ${theme.to} text-xl shadow-sm`}
+                      >
+                        {theme.emoji}
+                      </span>
+                      <span className="text-lg font-semibold text-slate-900 group-hover:text-indigo-700">
+                        {g.name}
+                      </span>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${theme.chip}`}>
+                      {obsCountByGroup[g.id] ?? 0} ажиглалт
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="mt-5 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+            Одоогоор бүлэг үүсгээгүй байна.{" "}
+            <Link href="/children" className="font-medium text-indigo-600 hover:underline">
+              Эхлээд бүлэг үүсгэнэ үү.
+            </Link>
+          </p>
+        )}
+      </div>
+    );
+  }
 
   const { data: domains } = await supabase
     .from("learning_domains")
@@ -40,11 +107,11 @@ export default async function ProgressAssessmentPage({
       "*, children!inner(id, first_name, last_name, group_id, groups!inner(teacher_id, name)), learning_domains(name), observation_media(file_url, media_type)"
     )
     .eq("children.groups.teacher_id", user!.id)
+    .eq("children.group_id", group)
     .or("stage.eq.yavts,stage.is.null")
     .order("observed_on", { ascending: false })
     .limit(200);
 
-  if (group) query = query.eq("children.group_id", group);
   if (child) query = query.eq("child_id", child);
   if (domain) query = query.eq("domain_id", domain);
   if (from) query = query.gte("observed_on", from);
@@ -52,29 +119,39 @@ export default async function ProgressAssessmentPage({
 
   const { data: observations } = await query;
 
-  const hasFilters = !!(group || child || domain || from || to);
+  const selectedGroup = groups?.find((g) => g.id === group);
+  const theme = groupTheme(selectedGroup?.level);
+  const hasFilters = !!(child || domain || from || to);
+
   const newObsParams = new URLSearchParams();
-  if (group) newObsParams.set("group", group);
+  newObsParams.set("group", group);
   if (child) newObsParams.set("child", child);
-  const newObsQuery = newObsParams.toString();
+
+  const clearParams = new URLSearchParams();
+  clearParams.set("group", group);
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-500 to-teal-500 p-6 text-white shadow-lg shadow-indigo-200/60 sm:p-7">
+      <div
+        className={`overflow-hidden rounded-3xl bg-gradient-to-br ${theme.from} ${theme.to} p-6 text-white shadow-lg sm:p-7`}
+      >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-indigo-100">
-              🔄 Тогтмол ажиглалт
-            </p>
-            <h1 className="mt-1 text-2xl font-bold">Явцын үнэлгээ</h1>
-            <p className="mt-1.5 max-w-lg text-sm text-indigo-100">
-              Хичээлийн жилийн туршид суралцахуйн 7 чиглэл тус бүрээр тогтмол хийгдэх ажиглалт,
-              тэмдэглэл, үнэлгээ.
+            <Link href="/assessment/yavts" className="text-sm font-medium text-white/80 hover:text-white hover:underline">
+              ← Бүх бүлэг
+            </Link>
+            <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold">
+              <span>{theme.emoji}</span>
+              {selectedGroup?.name ?? ""}
+            </h1>
+            <p className="mt-1.5 max-w-lg text-sm text-white/80">
+              {observations?.length ?? 0} ажиглалт · Суралцахуйн 7 чиглэл тус бүрээр тогтмол хийгдэх
+              ажиглалт, тэмдэглэл, үнэлгээ.
             </p>
           </div>
           <Link
-            href={newObsQuery ? `/assessment/yavts/new?${newObsQuery}` : "/assessment/yavts/new"}
-            className="whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 shadow-sm hover:bg-indigo-50"
+            href={`/assessment/yavts/new?${newObsParams.toString()}`}
+            className="whitespace-nowrap rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 shadow-sm hover:bg-white/90"
           >
             + Ажиглалт нэмэх
           </Link>
@@ -82,22 +159,8 @@ export default async function ProgressAssessmentPage({
       </div>
 
       <form className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
+        <input type="hidden" name="group" value={group} />
         <div className="flex flex-wrap items-end gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-500">Бүлэг</label>
-            <select
-              name="group"
-              defaultValue={group ?? ""}
-              className="mt-1 rounded-lg border border-slate-300 bg-slate-50 px-2.5 py-1.5 text-sm focus:border-indigo-400 focus:bg-white focus:outline-none"
-            >
-              <option value="">Бүх бүлэг</option>
-              {groups?.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-          </div>
           <div>
             <label className="block text-xs font-medium text-slate-500">Чиглэл</label>
             <select
@@ -133,13 +196,13 @@ export default async function ProgressAssessmentPage({
           </div>
           <button
             type="submit"
-            className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:opacity-95"
+            className={`rounded-lg bg-gradient-to-r ${theme.from} ${theme.to} px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:opacity-95`}
           >
             Шүүх
           </button>
           {hasFilters && (
             <Link
-              href="/assessment/yavts"
+              href={`/assessment/yavts?${clearParams.toString()}`}
               className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100"
             >
               ✕ Цэвэрлэх
