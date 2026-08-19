@@ -40,6 +40,10 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const mediaUrl: string | undefined = body.mediaUrl || body.imageUrl || undefined;
   const planText: string | undefined = typeof body.planText === "string" ? body.planText : undefined;
+  const targetLevel: number | undefined =
+    typeof body.targetLevel === "number" && body.targetLevel >= 1 && body.targetLevel <= 4
+      ? body.targetLevel
+      : undefined;
   const { domainName, outcomeCode, outcomeDescription } = body;
 
   if (!mediaUrl && !planText?.trim()) {
@@ -80,6 +84,7 @@ export async function POST(request: NextRequest) {
       planText,
       hasMedia: !!media,
       isVideo,
+      targetLevel,
     });
 
     const text = await callGemini(apiKey, prompt, media);

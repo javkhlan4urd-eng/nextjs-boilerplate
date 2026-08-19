@@ -1,4 +1,4 @@
-import { ROUTINE_PERIODS } from "@/types/database";
+import { ROUTINE_PERIODS, LEVEL_LABELS } from "@/types/database";
 
 export interface ObservationAIFields {
   observed_fact: string;
@@ -21,6 +21,7 @@ export function buildObservationPrompt({
   planText,
   hasMedia,
   isVideo,
+  targetLevel,
 }: {
   domainName?: string;
   outcomeCode?: string;
@@ -28,7 +29,13 @@ export function buildObservationPrompt({
   planText?: string;
   hasMedia: boolean;
   isVideo: boolean;
+  targetLevel?: number;
 }) {
+  const levelInstruction =
+    targetLevel && LEVEL_LABELS[targetLevel]
+      ? ` Хүүхэд энэ чиглэл/СҮД-ээр яг "${LEVEL_LABELS[targetLevel]}" (${targetLevel}-р түвшин) гэсэн хөгжлийн түвшинд байгааг тэмдэглэлдээ тод харуулж бич — тухайн түвшинд өвөрмөц, өөр түвшнөөс ялгаатай бодит жишээ, гүйцэтгэлийн нарийвчлалаар дүрсэлнэ үү (жишээ нь "Эхэлж байгаа" бол дэмжлэгтэйгээр эсвэл хэсэгчлэн гүйцэтгэж буйг, "Бүрэн эзэмшсэн" бол бие даан, тогтвортой гүйцэтгэж буйг тодорхой бичих).`
+      : "";
+
   const outcomeContext =
     outcomeCode && outcomeDescription
       ? `Ажиглаж буй суралцахуйн үр дүн (СҮД): ${outcomeCode} — ${outcomeDescription} (${domainName ?? ""} чиглэл).`
@@ -55,7 +62,7 @@ export function buildObservationPrompt({
 
   const periodOptions = ROUTINE_PERIODS.join(", ");
 
-  return `Та Сургуулийн өмнөх боловсролын (СӨБ) цэцэрлэгийн туслах багш. ${intro.join(" ")} ${outcomeContext} Тэмдэглэлдээ хүүхдийн нэрийг зохиож бичихгүй байх — зөвхөн "хүүхэд" гэж дурдана уу.
+  return `Та Сургуулийн өмнөх боловсролын (СӨБ) цэцэрлэгийн туслах багш. ${intro.join(" ")} ${outcomeContext}${levelInstruction} Тэмдэглэлдээ хүүхдийн нэрийг зохиож бичихгүй байх — зөвхөн "хүүхэд" гэж дурдана уу.
 
 Даалгавар: Дараах 8 хэсгийг СӨБ-ийн ажиглалтын стандартын дагуу, монгол хэлээр, зөв бичгийн дүрмийг баримтлан, объектив бөгөөд тодорхой бичнэ үү. ${unseenHint} Хариултаа яг доорх форматаар, 8 тэмдэглэгээгээр тусад нь бич (тэмдэглэгээ бүрийн дараа 1-2 өгүүлбэр):
 

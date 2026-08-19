@@ -260,7 +260,7 @@ export default function ObservationForm({
                   setAiFilling(true);
                   try {
                     const result = await analyzeObservation(
-                      { mediaUrl: firstMedia.url },
+                      { mediaUrl: firstMedia.url, targetLevel: level },
                       { domainName: selectedDomain?.name }
                     );
                     setFields(result);

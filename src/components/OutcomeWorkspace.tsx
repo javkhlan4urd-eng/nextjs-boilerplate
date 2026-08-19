@@ -157,6 +157,7 @@ function ObservationEditCard({
   const [error, setError] = useState<string | null>(null);
   const [aiFilling, setAiFilling] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [targetLevel, setTargetLevel] = useState<number | null>(null);
 
   async function aiFill() {
     const firstMedia = media.find((m) => m.type === "image") ?? media[0];
@@ -165,7 +166,7 @@ function ObservationEditCard({
     setAiFilling(true);
     try {
       const result = await analyzeObservation(
-        { mediaUrl: firstMedia.url },
+        { mediaUrl: firstMedia.url, targetLevel },
         { domainName, outcomeCode, outcomeDescription }
       );
       setFields(result);
@@ -207,6 +208,27 @@ function ObservationEditCard({
         </button>
       </div>
       {aiError && <p className="mt-1 text-xs text-red-600">{aiError}</p>}
+      <div className="mt-2">
+        <label className="block text-xs font-medium text-slate-500">
+          AI-д зориулсан зорилтот түвшин <span className="text-slate-400">(заавал биш)</span>
+        </label>
+        <div className="mt-1 grid grid-cols-4 gap-1">
+          {[1, 2, 3, 4].map((lv) => (
+            <button
+              key={lv}
+              type="button"
+              onClick={() => setTargetLevel(targetLevel === lv ? null : lv)}
+              className={`rounded-lg border px-1.5 py-1 text-[11px] font-medium transition ${
+                targetLevel === lv
+                  ? `border-transparent text-white shadow-sm ${LEVEL_STYLES[lv].solid}`
+                  : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {LEVEL_LABELS[lv]}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <input
           type="date"
@@ -289,6 +311,7 @@ export default function OutcomeWorkspace({
   const [draftPlan, setDraftPlan] = useState("");
   const [draftDate, setDraftDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [draftRoutinePeriod, setDraftRoutinePeriod] = useState("");
+  const [draftTargetLevel, setDraftTargetLevel] = useState<number | null>(null);
   const [savingObs, setSavingObs] = useState(false);
   const [obsError, setObsError] = useState<string | null>(null);
   const [aiFillingObs, setAiFillingObs] = useState(false);
@@ -333,7 +356,7 @@ export default function OutcomeWorkspace({
     setAiFillingObs(true);
     try {
       const result = await analyzeObservation(
-        { mediaUrl: firstMedia?.url, planText: draftPlan },
+        { mediaUrl: firstMedia?.url, planText: draftPlan, targetLevel: draftTargetLevel },
         { domainName, outcomeCode, outcomeDescription }
       );
       setDraftFields(result);
@@ -402,6 +425,7 @@ export default function OutcomeWorkspace({
       setDraftFields(emptyObservationFields());
       setDraftMedia([]);
       setDraftRoutinePeriod("");
+      setDraftTargetLevel(null);
       await load();
     } catch (e) {
       setObsError(e instanceof Error ? e.message : "Алдаа гарлаа");
@@ -611,6 +635,28 @@ export default function OutcomeWorkspace({
                 </button>
               </div>
               {aiFillObsError && <p className="mt-1 text-xs text-red-600">{aiFillObsError}</p>}
+
+              <div className="mt-2">
+                <label className="block text-xs font-medium text-slate-500">
+                  AI-д зориулсан зорилтот түвшин <span className="text-slate-400">(заавал биш)</span>
+                </label>
+                <div className="mt-1 grid grid-cols-4 gap-1">
+                  {[1, 2, 3, 4].map((lv) => (
+                    <button
+                      key={lv}
+                      type="button"
+                      onClick={() => setDraftTargetLevel(draftTargetLevel === lv ? null : lv)}
+                      className={`rounded-lg border px-1.5 py-1 text-[11px] font-medium transition ${
+                        draftTargetLevel === lv
+                          ? `border-transparent text-white shadow-sm ${LEVEL_STYLES[lv].solid}`
+                          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {LEVEL_LABELS[lv]}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <input

@@ -16,7 +16,7 @@ export function emptyObservationFields(): ObservationFields {
 }
 
 export async function analyzeObservation(
-  input: { mediaUrl?: string; planText?: string },
+  input: { mediaUrl?: string; planText?: string; targetLevel?: number | null },
   context: { domainName?: string; outcomeCode?: string; outcomeDescription?: string }
 ): Promise<ObservationFields & { routine_period: string }> {
   const res = await fetch("/api/analyze-observation", {
