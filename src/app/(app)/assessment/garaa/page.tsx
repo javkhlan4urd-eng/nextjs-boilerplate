@@ -5,7 +5,9 @@ import { domainColor, LEVEL_STYLES } from "@/lib/colors";
 import DeleteObservationButton from "@/components/DeleteObservationButton";
 import { formatChildName } from "@/lib/childName";
 import GroupSummaryEditor from "@/components/GroupSummaryEditor";
+import GaraaDomainChart from "@/components/GaraaDomainChart";
 import { saveGaraaSummary, generateGaraaSummaryDraft } from "./actions";
+import { avgByDomain, type ObsRow } from "@/lib/analysis";
 
 export default async function BaselineAssessmentPage({
   searchParams,
@@ -39,6 +41,7 @@ export default async function BaselineAssessmentPage({
   const { data: observations } = await query;
 
   let existingSummary = "";
+  let domainChartData: { domain: string; pct: number; count: number }[] = [];
   if (group) {
     const { data: summaryRow } = await supabase
       .from("garaa_summaries")
@@ -46,6 +49,30 @@ export default async function BaselineAssessmentPage({
       .eq("group_id", group)
       .maybeSingle();
     existingSummary = summaryRow?.content ?? "";
+
+    const { data: domains } = await supabase
+      .from("learning_domains")
+      .select("id, name, sort_order")
+      .eq("teacher_id", user!.id)
+      .order("sort_order");
+    const domainList = domains ?? [];
+
+    const { data: statsRaw } = await supabase
+      .from("observations")
+      .select("domain_id, level, observed_on, children!inner(group_id, groups!inner(teacher_id))")
+      .eq("children.group_id", group)
+      .eq("children.groups.teacher_id", user!.id)
+      .eq("stage", "garaa")
+      .not("level", "is", null);
+    const statsRows: ObsRow[] = (statsRaw ?? [])
+      .filter((r): r is typeof r & { level: number } => r.level !== null)
+      .map((r) => ({ domain_id: r.domain_id, level: r.level, observed_on: r.observed_on }));
+
+    domainChartData = avgByDomain(statsRows, domainList).map((d) => ({
+      domain: d.domain,
+      pct: d.count > 0 ? Math.round((d.avg / 4) * 100) : 0,
+      count: d.count,
+    }));
   }
   const groupName = group ? groups?.find((g) => g.id === group)?.name ?? "" : "";
 
@@ -91,6 +118,15 @@ export default async function BaselineAssessmentPage({
               {g.name}
             </Link>
           ))}
+        </div>
+      )}
+
+      {group && domainChartData.some((d) => d.count > 0) && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+          <h3 className="text-sm font-semibold text-slate-800">
+            Суралцахуйн чиглэл бүрээр үнэлсэн хувь ({groupName})
+          </h3>
+          <GaraaDomainChart data={domainChartData} />
         </div>
       )}
 
