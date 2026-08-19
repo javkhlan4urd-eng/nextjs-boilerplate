@@ -5,7 +5,16 @@ import PrintButton from "@/components/PrintButton";
 import { avgByDomain, type ObsRow } from "@/lib/analysis";
 import { LEVEL_LABELS } from "@/types/database";
 import { formatChildName } from "@/lib/childName";
-import { groupTheme } from "@/lib/colors";
+import { groupTheme, LEVEL_STYLES } from "@/lib/colors";
+
+function overallStats(avg: { domain: string; avg: number; count: number }[]) {
+  const valid = avg.filter((a) => a.count > 0);
+  if (valid.length === 0) return null;
+  const overallAvg = valid.reduce((s, a) => s + a.avg, 0) / valid.length;
+  const pct = Math.round((overallAvg / 4) * 100);
+  const level = Math.min(4, Math.max(1, Math.round(overallAvg)));
+  return { pct, level };
+}
 
 export default async function ReportsPage({
   searchParams,
@@ -210,6 +219,8 @@ export default async function ReportsPage({
                       {d.name}
                     </th>
                   ))}
+                  <th className="px-2 py-2 text-center font-medium">Нийт дүн</th>
+                  <th className="px-2 py-2 text-center font-medium">Хөгжлийн түвшин</th>
                   <th className="px-2 py-2 text-center font-medium">Ажиглалтын тоо</th>
                 </tr>
               </thead>
@@ -217,6 +228,8 @@ export default async function ReportsPage({
                 {(reportChildren ?? []).map((c) => {
                   const rows = rowsByChild.get(c.id) ?? [];
                   const avg = avgByDomain(rows, domainList);
+                  const stats = overallStats(avg);
+                  const lv = stats ? LEVEL_STYLES[stats.level] : null;
                   return (
                     <tr key={c.id} className="border-b border-slate-100">
                       <td className="py-2 pr-3 font-medium text-slate-800">
@@ -227,6 +240,18 @@ export default async function ReportsPage({
                           {a.count > 0 ? a.avg.toFixed(1) : "—"}
                         </td>
                       ))}
+                      <td className="px-2 py-2 text-center font-semibold text-slate-800">
+                        {stats ? `${stats.pct}%` : "—"}
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        {stats && lv ? (
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${lv.bg} ${lv.text}`}>
+                            {LEVEL_LABELS[stats.level]}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="px-2 py-2 text-center text-slate-500">{rows.length}</td>
                     </tr>
                   );
