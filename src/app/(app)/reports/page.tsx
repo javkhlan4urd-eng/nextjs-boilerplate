@@ -5,7 +5,7 @@ import PrintButton from "@/components/PrintButton";
 import { avgByDomain, type ObsRow } from "@/lib/analysis";
 import { LEVEL_LABELS } from "@/types/database";
 import { formatChildName } from "@/lib/childName";
-import AutoSubmitSelect from "@/components/AutoSubmitSelect";
+import { groupTheme } from "@/lib/colors";
 
 export default async function ReportsPage({
   searchParams,
@@ -23,19 +23,77 @@ export default async function ReportsPage({
     .select("*")
     .eq("teacher_id", user!.id)
     .order("sort_order");
+  const domainList = domains ?? [];
 
   const { data: groups } = await supabase
     .from("groups")
-    .select("id, name")
+    .select("id, name, level")
     .eq("teacher_id", user!.id)
     .order("name");
+
+  if (!sp.group) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <div className="no-print overflow-hidden rounded-3xl bg-gradient-to-br from-teal-500 to-cyan-400 p-6 text-white shadow-lg shadow-teal-200/60 sm:p-7">
+          <Link href="/assessment" className="text-sm font-medium text-white/80 hover:text-white hover:underline">
+            ← Үнэлгээ
+          </Link>
+          <p className="mt-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-white/80">
+            🖨️ Тайлан
+          </p>
+          <h1 className="mt-1 text-2xl font-bold">Бүлгээ сонгоно уу</h1>
+          <p className="mt-1.5 max-w-lg text-sm text-white/90">
+            Хүүхдийн хөгжлийн тайланг харахын тулд эхлээд бүлгээ сонгоно уу.
+          </p>
+        </div>
+
+        <div className="no-print mt-6">
+          <DomainSettings domains={domainList} />
+        </div>
+
+        {groups && groups.length > 0 ? (
+          <div className="no-print mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {groups.map((g) => {
+              const theme = groupTheme(g.level);
+              return (
+                <Link
+                  key={g.id}
+                  href={`/reports?group=${g.id}`}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-100 transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <div className={`h-2 w-full bg-gradient-to-r ${theme.from} ${theme.to}`} />
+                  <div className="flex items-center gap-2.5 p-5">
+                    <span
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${theme.from} ${theme.to} text-xl shadow-sm`}
+                    >
+                      {theme.emoji}
+                    </span>
+                    <span className="text-lg font-semibold text-slate-900 group-hover:text-indigo-700">
+                      {g.name}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="no-print mt-6 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+            Одоогоор бүлэг үүсгээгүй байна.{" "}
+            <Link href="/children" className="font-medium text-indigo-600 hover:underline">
+              Эхлээд бүлэг үүсгэнэ үү.
+            </Link>
+          </p>
+        )}
+      </div>
+    );
+  }
 
   let childrenQuery = supabase
     .from("children")
     .select("id, first_name, last_name, group_id, groups!inner(teacher_id)")
     .eq("groups.teacher_id", user!.id)
+    .eq("group_id", sp.group)
     .order("first_name");
-  if (sp.group) childrenQuery = childrenQuery.eq("group_id", sp.group);
   if (sp.child) childrenQuery = childrenQuery.eq("id", sp.child);
   const { data: reportChildren } = await childrenQuery;
 
@@ -46,7 +104,6 @@ export default async function ReportsPage({
   const from = sp.from || defaultFrom;
   const to = sp.to || today;
 
-  const domainList = domains ?? [];
   const childIds = (reportChildren ?? []).map((c) => c.id);
 
   let rowsByChild = new Map<string, ObsRow[]>();
@@ -68,18 +125,26 @@ export default async function ReportsPage({
     }
   }
 
+  const selectedGroup = groups?.find((g) => g.id === sp.group);
+  const theme = groupTheme(selectedGroup?.level);
+
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="no-print overflow-hidden rounded-3xl bg-gradient-to-br from-teal-500 to-cyan-400 p-6 text-white shadow-lg shadow-teal-200/60 sm:p-7">
-        <Link href="/assessment" className="text-sm font-medium text-white/80 hover:text-white hover:underline">
-          ← Үнэлгээ
+      <div
+        className={`no-print overflow-hidden rounded-3xl bg-gradient-to-br ${theme.from} ${theme.to} p-6 text-white shadow-lg sm:p-7`}
+      >
+        <Link href="/reports" className="text-sm font-medium text-white/80 hover:text-white hover:underline">
+          ← Бүх бүлэг
         </Link>
         <p className="mt-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-white/80">
-          🖨️ Тайлан & тохиргоо
+          🖨️ Тайлан
         </p>
-        <h1 className="mt-1 text-2xl font-bold">Тайлан тохиргоо</h1>
+        <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold">
+          <span>{theme.emoji}</span>
+          {selectedGroup?.name ?? ""}
+        </h1>
         <p className="mt-1.5 max-w-lg text-sm text-white/90">
-          Чиглэлийн тохиргоо хийх, тухайн хугацааны хөгжлийн тайланг үүсгэж хэвлэх/PDF татах.
+          Тухайн хугацааны хөгжлийн тайланг үүсгэж хэвлэх/PDF татах.
         </p>
       </div>
 
@@ -88,17 +153,7 @@ export default async function ReportsPage({
       </div>
 
       <form className="no-print mt-6 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-500">Бүлэг</label>
-          <AutoSubmitSelect name="group" defaultValue={sp.group ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
-            <option value="">Бүх бүлэг</option>
-            {groups?.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </AutoSubmitSelect>
-        </div>
+        <input type="hidden" name="group" value={sp.group} />
         <div>
           <label className="block text-xs font-medium text-slate-500">Хүүхэд (заавал биш)</label>
           <select name="child" defaultValue={sp.child ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
@@ -120,7 +175,7 @@ export default async function ReportsPage({
         </div>
         <button
           type="submit"
-          className="rounded-lg bg-gradient-to-r from-teal-500 to-cyan-400 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-95"
+          className={`rounded-lg bg-gradient-to-r ${theme.from} ${theme.to} px-3 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-95`}
         >
           Тайлан үүсгэх
         </button>
@@ -128,13 +183,14 @@ export default async function ReportsPage({
       </form>
 
       <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-100 print:border-0 print:shadow-none">
-        <div className="border-b border-slate-100 bg-gradient-to-r from-teal-50 to-cyan-50 p-6 print:border-0 print:bg-white print:p-0">
+        <div
+          className={`border-b border-slate-100 p-6 print:border-0 print:bg-white print:p-0 ${theme.chip}`}
+        >
           <h2 className="text-lg font-semibold text-slate-900">
             Хүүхдийн хөгжлийн үнэлгээний тайлан
           </h2>
           <p className="text-sm text-slate-500">
-            Хугацаа: {from} — {to}
-            {sp.group ? ` · ${groups?.find((g) => g.id === sp.group)?.name ?? ""}` : ""}
+            Хугацаа: {from} — {to} · {selectedGroup?.name ?? ""}
           </p>
         </div>
         <div className="p-6 print:p-0">
