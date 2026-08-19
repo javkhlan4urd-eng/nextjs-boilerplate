@@ -5,10 +5,15 @@ import { CategoryAchievedBar } from "@/components/OutcomeCharts";
 import PrintButton from "@/components/PrintButton";
 import { formatChildName } from "@/lib/childName";
 
+function formatMonthLabel(month: string) {
+  const [year, m] = month.split("-");
+  return `${year} оны ${Number(m)}-р сар`;
+}
+
 export default async function ResultAssessmentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ group?: string; schoolYear?: string }>;
+  searchParams: Promise<{ group?: string; schoolYear?: string; month?: string }>;
 }) {
   const sp = await searchParams;
   const supabase = await createClient();
@@ -50,16 +55,19 @@ export default async function ResultAssessmentPage({
   const criteria = criteriaRaw ?? [];
 
   const childIds = children.map((c) => c.id);
-  let checks: { child_id: string; criterion_id: string; achieved: boolean }[] = [];
+  let checks: { child_id: string; criterion_id: string; achieved: boolean; checked_on: string }[] = [];
   if (childIds.length > 0) {
     const { data } = await supabase
       .from("readiness_checks")
-      .select("child_id, criterion_id, achieved")
+      .select("child_id, criterion_id, achieved, checked_on")
       .in("child_id", childIds)
       .eq("achieved", true);
     checks = data ?? [];
   }
-  const achievedSet = new Set(checks.map((c) => `${c.child_id}|${c.criterion_id}`));
+
+  const monthOptions = Array.from(new Set(checks.map((c) => c.checked_on.slice(0, 7)))).sort();
+  const filteredChecks = sp.month ? checks.filter((c) => c.checked_on.slice(0, 7) === sp.month) : checks;
+  const achievedSet = new Set(filteredChecks.map((c) => `${c.child_id}|${c.criterion_id}`));
 
   const childSummaries = children.map((child) => {
     const level = child.groups?.level ?? null;
@@ -124,6 +132,19 @@ export default async function ResultAssessmentPage({
             ))}
           </select>
         </div>
+        {monthOptions.length > 0 && (
+          <div>
+            <label className="block text-xs font-medium text-slate-500">Сар</label>
+            <select name="month" defaultValue={sp.month ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+              <option value="">Бүх сар</option>
+              {monthOptions.map((m) => (
+                <option key={m} value={m}>
+                  {formatMonthLabel(m)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <button type="submit" className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white">
           Шүүх
         </button>
@@ -134,7 +155,8 @@ export default async function ResultAssessmentPage({
         <h2 className="text-lg font-semibold text-slate-900">Нэгдсэн тойм</h2>
         <p className="text-sm text-slate-500">
           {groupLabel}
-          {yearLabel} · Хамрагдсан хүүхэд: {children.length}
+          {yearLabel}
+          {sp.month ? ` · ${formatMonthLabel(sp.month)}` : ""} · Хамрагдсан хүүхэд: {children.length}
         </p>
 
         {children.length === 0 ? (

@@ -10,12 +10,14 @@ export async function toggleReadinessCheck(childId: string, criterionId: string,
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Нэвтрээгүй байна");
 
+  const today = new Date().toISOString().slice(0, 10);
   const { error } = await supabase.from("readiness_checks").upsert(
     {
       child_id: childId,
       criterion_id: criterionId,
       teacher_id: user.id,
       achieved,
+      checked_on: today,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "child_id,criterion_id" }
