@@ -7,7 +7,14 @@ import {
   periodLabel,
   type ObsRow,
 } from "@/lib/analysis";
-import { DomainRadar, MonthlyTrend, PeriodComparisonBar } from "@/components/AnalysisCharts";
+import {
+  availableReadinessYears,
+  compareReadinessByYear,
+  type ReadinessCheckRow,
+  type CriterionMeta,
+  type ChildLevelMeta,
+} from "@/lib/readinessAnalysis";
+import { DomainRadar, MonthlyTrend, PeriodComparisonBar, ReadinessYearComparisonBar } from "@/components/AnalysisCharts";
 import { formatChildName } from "@/lib/childName";
 
 export default async function AnalysisPage({
@@ -21,6 +28,8 @@ export default async function AnalysisPage({
     granularity?: string;
     periodA?: string;
     periodB?: string;
+    readinessYearA?: string;
+    readinessYearB?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -45,12 +54,20 @@ export default async function AnalysisPage({
 
   let childrenQuery = supabase
     .from("children")
-    .select("id, first_name, last_name, group_id, groups!inner(teacher_id, school_year)")
+    .select("id, first_name, last_name, group_id, groups!inner(teacher_id, school_year, level)")
     .eq("groups.teacher_id", user!.id)
     .order("first_name");
   if (sp.group) childrenQuery = childrenQuery.eq("group_id", sp.group);
   if (sp.schoolYear) childrenQuery = childrenQuery.eq("groups.school_year", sp.schoolYear);
-  const { data: children } = await childrenQuery;
+  const { data: childrenRaw } = await childrenQuery;
+  const children = (childrenRaw ?? []) as unknown as {
+    id: string;
+    first_name: string;
+    last_name: string | null;
+    group_id: string;
+    groups: { school_year: string | null; level: number | null };
+  }[];
+  const scopedChildIds = sp.child ? children.filter((c) => c.id === sp.child).map((c) => c.id) : children.map((c) => c.id);
 
   const { data: domains } = await supabase
     .from("learning_domains")
@@ -85,6 +102,40 @@ export default async function AnalysisPage({
   const periods = availablePeriods(rows, granularity);
   const periodA = sp.periodA && periods.includes(sp.periodA) ? sp.periodA : periods[periods.length - 2];
   const periodB = sp.periodB && periods.includes(sp.periodB) ? sp.periodB : periods[periods.length - 1];
+
+  const { data: criteriaRaw } = await supabase
+    .from("readiness_criteria")
+    .select("id, level, category")
+    .eq("teacher_id", user!.id);
+  const criteria: CriterionMeta[] = criteriaRaw ?? [];
+
+  let readinessChecks: ReadinessCheckRow[] = [];
+  if (scopedChildIds.length > 0) {
+    const { data: checksRaw } = await supabase
+      .from("readiness_checks")
+      .select("child_id, criterion_id, checked_on")
+      .in("child_id", scopedChildIds)
+      .eq("achieved", true);
+    readinessChecks = checksRaw ?? [];
+  }
+
+  const readinessChildren: ChildLevelMeta[] = children
+    .filter((c) => scopedChildIds.includes(c.id))
+    .map((c) => ({ id: c.id, level: c.groups?.level ?? null }));
+
+  const readinessYears = availableReadinessYears(readinessChecks);
+  const readinessYearA =
+    sp.readinessYearA && readinessYears.includes(sp.readinessYearA)
+      ? sp.readinessYearA
+      : readinessYears[readinessYears.length - 2];
+  const readinessYearB =
+    sp.readinessYearB && readinessYears.includes(sp.readinessYearB)
+      ? sp.readinessYearB
+      : readinessYears[readinessYears.length - 1];
+  const readinessComparison =
+    readinessYearA && readinessYearB
+      ? compareReadinessByYear(readinessChecks, criteria, readinessChildren, readinessYearA, readinessYearB)
+      : null;
   const comparisonData =
     periodA && periodB ? comparePeriods(rows, domainList, granularity, periodA, periodB) : [];
 
@@ -207,6 +258,74 @@ export default async function AnalysisPage({
           </div>
         </div>
       )}
+
+      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Үр дүнгийн үнэлгээ — оноор харьцуулах</h2>
+            <p className="text-xs text-slate-500">
+              Мэдлэг, Чадвар, Төлөвшлийн ангилал тус бүрээр жил хоорондын эзэмшилтийн хувийг харьцуулна.
+            </p>
+          </div>
+          {readinessYears.length >= 2 && (
+            <form className="flex flex-wrap gap-2">
+              <input type="hidden" name="group" value={sp.group ?? ""} />
+              <input type="hidden" name="schoolYear" value={sp.schoolYear ?? ""} />
+              <input type="hidden" name="child" value={sp.child ?? ""} />
+              <input type="hidden" name="year" value={String(year)} />
+              <input type="hidden" name="granularity" value={granularity} />
+              <select name="readinessYearA" defaultValue={readinessYearA} className="rounded-lg border border-slate-300 px-2 py-1 text-xs">
+                {readinessYears.map((y) => (
+                  <option key={y} value={y}>
+                    {y} он
+                  </option>
+                ))}
+              </select>
+              <span className="self-center text-xs text-slate-400">→</span>
+              <select name="readinessYearB" defaultValue={readinessYearB} className="rounded-lg border border-slate-300 px-2 py-1 text-xs">
+                {readinessYears.map((y) => (
+                  <option key={y} value={y}>
+                    {y} он
+                  </option>
+                ))}
+              </select>
+              <button type="submit" className="rounded-lg bg-slate-800 px-2 py-1 text-xs font-medium text-white">
+                Харьцуулах
+              </button>
+            </form>
+          )}
+        </div>
+
+        {readinessYears.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">
+            Сонгосон хамрах хүрээнд үр дүнгийн үнэлгээний мэдээлэл алга байна.
+          </p>
+        ) : readinessYears.length < 2 ? (
+          <p className="mt-4 text-sm text-slate-500">
+            Жил хоорондын харьцуулалт хийхийн тулд дор хаяж 2 өөр оны үнэлгээ хэрэгтэй. Одоогоор зөвхөн{" "}
+            {readinessYears[0]} оны мэдээлэл бүртгэгдсэн байна.
+          </p>
+        ) : (
+          readinessComparison && (
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-slate-50 p-3 text-center">
+                  <p className="text-xs text-slate-500">{readinessComparison.labelA} — нийт эзэмшилт</p>
+                  <p className="mt-1 text-2xl font-semibold text-slate-800">{readinessComparison.overallPctA}%</p>
+                </div>
+                <div className="rounded-lg bg-green-50 p-3 text-center">
+                  <p className="text-xs text-slate-500">{readinessComparison.labelB} — нийт эзэмшилт</p>
+                  <p className="mt-1 text-2xl font-semibold text-green-700">{readinessComparison.overallPctB}%</p>
+                </div>
+              </div>
+              <ReadinessYearComparisonBar
+                data={readinessComparison.categoryData}
+                keys={[readinessComparison.labelA, readinessComparison.labelB]}
+              />
+            </>
+          )
+        )}
+      </div>
     </div>
   );
 }

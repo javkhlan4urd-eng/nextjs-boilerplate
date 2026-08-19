@@ -109,3 +109,25 @@ export function PeriodComparisonBar({
     </ResponsiveContainer>
   );
 }
+
+export function ReadinessYearComparisonBar({
+  data,
+  keys,
+}: {
+  data: Record<string, number | string>[];
+  keys: [string, string];
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={data} margin={{ left: 0, right: 16 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="category" tick={{ fontSize: 11 }} />
+        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+        <Tooltip formatter={(v) => `${v}%`} />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+        <Bar dataKey={keys[0]} fill="#94a3b8" radius={[4, 4, 0, 0]} />
+        <Bar dataKey={keys[1]} fill="#16a34a" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
