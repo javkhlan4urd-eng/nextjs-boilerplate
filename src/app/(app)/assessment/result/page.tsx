@@ -4,6 +4,7 @@ import { CATEGORY_ORDER, readinessVerdict, verdictStyle, fetchAllAchievedChecks 
 import { CategoryAchievedBar } from "@/components/OutcomeCharts";
 import PrintButton from "@/components/PrintButton";
 import { formatChildName } from "@/lib/childName";
+import AutoSubmitSelect from "@/components/AutoSubmitSelect";
 
 function formatMonthLabel(month: string) {
   const [year, m] = month.split("-");
@@ -123,19 +124,19 @@ export default async function ResultAssessmentPage({
         {schoolYears.length > 0 && (
           <div>
             <label className="block text-xs font-medium text-slate-500">Хичээлийн жил</label>
-            <select name="schoolYear" defaultValue={sp.schoolYear ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <AutoSubmitSelect name="schoolYear" defaultValue={sp.schoolYear ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
               <option value="">Бүх жил</option>
               {schoolYears.map((y) => (
                 <option key={y} value={y}>
                   {y}
                 </option>
               ))}
-            </select>
+            </AutoSubmitSelect>
           </div>
         )}
         <div>
           <label className="block text-xs font-medium text-slate-500">Бүлэг</label>
-          <select name="group" defaultValue={sp.group ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+          <AutoSubmitSelect name="group" defaultValue={sp.group ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
             <option value="">Бүх бүлэг</option>
             {groups?.map((g) => (
               <option key={g.id} value={g.id}>
@@ -143,18 +144,18 @@ export default async function ResultAssessmentPage({
                 {g.school_year ? ` (${g.school_year})` : ""}
               </option>
             ))}
-          </select>
+          </AutoSubmitSelect>
         </div>
         {monthOptions.length > 0 && (
           <div>
             <label className="block text-xs font-medium text-slate-500">Сар</label>
-            <select name="month" defaultValue={effectiveMonth ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <AutoSubmitSelect name="month" defaultValue={effectiveMonth ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
               {monthOptions.map((m) => (
                 <option key={m} value={m}>
                   {formatMonthLabel(m)}
                 </option>
               ))}
-            </select>
+            </AutoSubmitSelect>
           </div>
         )}
         <button type="submit" className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white">

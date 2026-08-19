@@ -4,6 +4,7 @@ import PrintButton from "@/components/PrintButton";
 import { avgByDomain, type ObsRow } from "@/lib/analysis";
 import { LEVEL_LABELS } from "@/types/database";
 import { formatChildName } from "@/lib/childName";
+import AutoSubmitSelect from "@/components/AutoSubmitSelect";
 
 export default async function ReportsPage({
   searchParams,
@@ -80,14 +81,14 @@ export default async function ReportsPage({
       <form className="no-print mt-6 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3">
         <div>
           <label className="block text-xs font-medium text-slate-500">Бүлэг</label>
-          <select name="group" defaultValue={sp.group ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+          <AutoSubmitSelect name="group" defaultValue={sp.group ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
             <option value="">Бүх бүлэг</option>
             {groups?.map((g) => (
               <option key={g.id} value={g.id}>
                 {g.name}
               </option>
             ))}
-          </select>
+          </AutoSubmitSelect>
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-500">Хүүхэд (заавал биш)</label>
