@@ -12,9 +12,9 @@ import { avgByDomain, type ObsRow } from "@/lib/analysis";
 export default async function BaselineAssessmentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ group?: string }>;
+  searchParams: Promise<{ group?: string; domain?: string }>;
 }) {
-  const { group } = await searchParams;
+  const { group, domain } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -25,6 +25,13 @@ export default async function BaselineAssessmentPage({
     .select("id, name")
     .eq("teacher_id", user!.id)
     .order("name");
+
+  const { data: domainsRaw } = await supabase
+    .from("learning_domains")
+    .select("id, name, sort_order")
+    .eq("teacher_id", user!.id)
+    .order("sort_order");
+  const domainList = domainsRaw ?? [];
 
   let query = supabase
     .from("observations")
@@ -37,6 +44,7 @@ export default async function BaselineAssessmentPage({
     .limit(200);
 
   if (group) query = query.eq("children.group_id", group);
+  if (domain) query = query.eq("domain_id", domain);
 
   const { data: observations } = await query;
 
@@ -49,13 +57,6 @@ export default async function BaselineAssessmentPage({
       .eq("group_id", group)
       .maybeSingle();
     existingSummary = summaryRow?.content ?? "";
-
-    const { data: domains } = await supabase
-      .from("learning_domains")
-      .select("id, name, sort_order")
-      .eq("teacher_id", user!.id)
-      .order("sort_order");
-    const domainList = domains ?? [];
 
     const { data: statsRaw } = await supabase
       .from("observations")
@@ -75,6 +76,8 @@ export default async function BaselineAssessmentPage({
     }));
   }
   const groupName = group ? groups?.find((g) => g.id === group)?.name ?? "" : "";
+  const domainName = domain ? domainList.find((d) => d.id === domain)?.name ?? "" : "";
+  const domainCountByDomainId = new Map(domainChartData.map((d) => [d.domain, d.count]));
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -130,47 +133,82 @@ export default async function BaselineAssessmentPage({
         </div>
       )}
 
-      <div className="mt-4 space-y-3">
-        {observations && observations.length > 0 ? (
-          observations.map((o) => {
-            const c = (
-              o as unknown as { children: { id: string; first_name: string; last_name: string | null } }
-            ).children;
-            const domainName = (o as unknown as { learning_domains: { name: string } })
-              .learning_domains?.name;
-            const dc = domainColor(domainName ?? "");
-            const lv = o.level ? LEVEL_STYLES[o.level] : null;
+      {group && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {domainList.map((d) => {
+            const count = domainCountByDomainId.get(d.name) ?? 0;
             return (
-              <div key={o.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link href={`/children/${c.id}`} className="font-medium text-slate-900 hover:text-indigo-700">
-                      {formatChildName(c.first_name, c.last_name)}
-                    </Link>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${dc.bg} ${dc.text}`}>
-                      {domainName}
-                    </span>
-                    <span className="text-xs text-slate-500">{o.observed_on}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {o.level && lv && (
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${lv.bg} ${lv.text}`}>
-                        {LEVEL_LABELS[o.level]}
-                      </span>
-                    )}
-                    <DeleteObservationButton id={o.id} childId={c.id} />
-                  </div>
-                </div>
-                {o.note && <p className="mt-2 text-sm text-slate-700">{o.note}</p>}
-              </div>
+              <Link
+                key={d.id}
+                href={`/assessment/garaa?group=${group}&domain=${d.id}`}
+                className={`rounded-full px-3 py-1 text-sm font-medium ${
+                  domain === d.id
+                    ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
+                    : "bg-white text-slate-600 border border-slate-200"
+                }`}
+              >
+                {d.name}
+                {count > 0 ? ` (${count})` : ""}
+              </Link>
             );
-          })
-        ) : (
-          <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-            Гарааны үнэлгээ бүртгэгдээгүй байна.
-          </p>
-        )}
-      </div>
+          })}
+        </div>
+      )}
+
+      {group && !domain ? (
+        <p className="mt-6 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+          Дэлгэрэнгүй ажиглалтыг харахын тулд дээрээс сургалтын чиглэл сонгоно уу.
+        </p>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {group && domain && (
+            <h3 className="text-sm font-semibold text-slate-800">
+              {groupName} · {domainName} — хүүхэд тус бүрийн үнэлгээ
+            </h3>
+          )}
+          {observations && observations.length > 0 ? (
+            observations.map((o) => {
+              const c = (
+                o as unknown as { children: { id: string; first_name: string; last_name: string | null } }
+              ).children;
+              const obsDomainName = (o as unknown as { learning_domains: { name: string } })
+                .learning_domains?.name;
+              const dc = domainColor(obsDomainName ?? "");
+              const lv = o.level ? LEVEL_STYLES[o.level] : null;
+              return (
+                <div key={o.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm shadow-slate-100">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`/children/${c.id}`} className="font-medium text-slate-900 hover:text-indigo-700">
+                        {formatChildName(c.first_name, c.last_name)}
+                      </Link>
+                      {!domain && (
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${dc.bg} ${dc.text}`}>
+                          {obsDomainName}
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-500">{o.observed_on}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {o.level && lv && (
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${lv.bg} ${lv.text}`}>
+                          {LEVEL_LABELS[o.level]}
+                        </span>
+                      )}
+                      <DeleteObservationButton id={o.id} childId={c.id} />
+                    </div>
+                  </div>
+                  {o.note && <p className="mt-2 text-sm text-slate-700">{o.note}</p>}
+                </div>
+              );
+            })
+          ) : (
+            <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+              Гарааны үнэлгээ бүртгэгдээгүй байна.
+            </p>
+          )}
+        </div>
+      )}
 
       {group && (
         <div className="mt-8 rounded-xl border border-slate-200 bg-white p-4">
