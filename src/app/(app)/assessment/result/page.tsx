@@ -5,7 +5,8 @@ import { CategoryAchievedBar } from "@/components/OutcomeCharts";
 import PrintButton from "@/components/PrintButton";
 import { formatChildName } from "@/lib/childName";
 import AutoSubmitSelect from "@/components/AutoSubmitSelect";
-import ReadinessSummaryEditor from "@/components/ReadinessSummaryEditor";
+import GroupSummaryEditor from "@/components/GroupSummaryEditor";
+import { saveReadinessSummary, generateReadinessSummaryDraft } from "./actions";
 
 function formatMonthLabel(month: string) {
   const [year, m] = month.split("-");
@@ -250,7 +251,12 @@ export default async function ResultAssessmentPage({
                   {yearLabel} бүлгийн энэ хичээлийн жилийн Үр дүнгийн үнэлгээний нэгдсэн дүгнэлт — AI-аар
                   бэлтгэх эсвэл өөрөө шивж бичих боломжтой.
                 </p>
-                <ReadinessSummaryEditor groupId={sp.group} initialContent={existingSummary} />
+                <GroupSummaryEditor
+                  groupId={sp.group}
+                  initialContent={existingSummary}
+                  generateAction={generateReadinessSummaryDraft}
+                  saveAction={saveReadinessSummary}
+                />
               </div>
             )}
           </>

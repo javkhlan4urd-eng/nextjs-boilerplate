@@ -4,6 +4,8 @@ import { CONCLUSION_THRESHOLD } from "@/lib/outcomeConclusion";
 import { readinessVerdict, verdictStyle } from "@/lib/readiness";
 import { formatChildName } from "@/lib/childName";
 import { domainColor } from "@/lib/colors";
+import GroupSummaryEditor from "@/components/GroupSummaryEditor";
+import { saveOutcomeSummary, generateOutcomeSummaryDraft } from "./actions";
 
 export default async function OutcomeReportPage({
   searchParams,
@@ -101,6 +103,17 @@ export default async function OutcomeReportPage({
     .sort((a, b) => b.withConclusion / b.total - a.withConclusion / a.total)[0];
 
   const selectedChild = sp.child ? children.find((c) => c.id === sp.child) : null;
+
+  let existingSummary = "";
+  if (sp.group) {
+    const { data: summaryRow } = await supabase
+      .from("outcome_summaries")
+      .select("content")
+      .eq("group_id", sp.group)
+      .maybeSingle();
+    existingSummary = summaryRow?.content ?? "";
+  }
+  const groupLabel = sp.group ? groups?.find((g) => g.id === sp.group)?.name ?? "" : "";
 
   const childOutcomesTotal = selectedChild
     ? outcomes.filter((o) => {
@@ -234,6 +247,22 @@ export default async function OutcomeReportPage({
             );
           })}
         </div>
+
+        {sp.group && (
+          <div className="no-print mt-8 rounded-xl border border-slate-200 p-4">
+            <h3 className="text-sm font-semibold text-slate-800">Нэгдсэн дүгнэлт</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              {groupLabel} бүлгийн СҮД дүгнэлтийн нэгдсэн тайлан — AI-аар бэлтгэх эсвэл өөрөө шивж бичих
+              боломжтой.
+            </p>
+            <GroupSummaryEditor
+              groupId={sp.group}
+              initialContent={existingSummary}
+              generateAction={generateOutcomeSummaryDraft}
+              saveAction={saveOutcomeSummary}
+            />
+          </div>
+        )}
 
         {selectedChild ? (
           <div className="mt-8">

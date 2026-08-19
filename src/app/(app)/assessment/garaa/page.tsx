@@ -4,6 +4,8 @@ import { LEVEL_LABELS } from "@/types/database";
 import { domainColor, LEVEL_STYLES } from "@/lib/colors";
 import DeleteObservationButton from "@/components/DeleteObservationButton";
 import { formatChildName } from "@/lib/childName";
+import GroupSummaryEditor from "@/components/GroupSummaryEditor";
+import { saveGaraaSummary, generateGaraaSummaryDraft } from "./actions";
 
 export default async function BaselineAssessmentPage({
   searchParams,
@@ -35,6 +37,17 @@ export default async function BaselineAssessmentPage({
   if (group) query = query.eq("children.group_id", group);
 
   const { data: observations } = await query;
+
+  let existingSummary = "";
+  if (group) {
+    const { data: summaryRow } = await supabase
+      .from("garaa_summaries")
+      .select("content")
+      .eq("group_id", group)
+      .maybeSingle();
+    existingSummary = summaryRow?.content ?? "";
+  }
+  const groupName = group ? groups?.find((g) => g.id === group)?.name ?? "" : "";
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -122,6 +135,22 @@ export default async function BaselineAssessmentPage({
           </p>
         )}
       </div>
+
+      {group && (
+        <div className="mt-8 rounded-xl border border-slate-200 bg-white p-4">
+          <h3 className="text-sm font-semibold text-slate-800">Нэгдсэн дүгнэлт</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            {groupName} бүлгийн Гарааны үнэлгээний нэгдсэн дүгнэлт — AI-аар бэлтгэх эсвэл өөрөө шивж бичих
+            боломжтой.
+          </p>
+          <GroupSummaryEditor
+            groupId={group}
+            initialContent={existingSummary}
+            generateAction={generateGaraaSummaryDraft}
+            saveAction={saveGaraaSummary}
+          />
+        </div>
+      )}
     </div>
   );
 }
