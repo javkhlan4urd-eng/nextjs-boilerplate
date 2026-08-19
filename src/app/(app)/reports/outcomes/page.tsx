@@ -107,7 +107,12 @@ export default async function OutcomeReportPage({
   const selectedDomain = sp.domain ? domainList.find((d) => d.id === sp.domain) : null;
 
   const domainChildSummaries = selectedDomain
-    ? children.map((child) => {
+    ? [...children]
+        .sort((a, b) => {
+          const groupCmp = (a.groups?.name ?? "").localeCompare(b.groups?.name ?? "");
+          return groupCmp !== 0 ? groupCmp : a.first_name.localeCompare(b.first_name);
+        })
+        .map((child) => {
         const childLevel = child.groups?.level ?? null;
         const applicableOutcomes = outcomes.filter(
           (o) => o.domain_id === selectedDomain.id && (!childLevel || !o.level || o.level === childLevel)
@@ -389,6 +394,7 @@ export default async function OutcomeReportPage({
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
                     <th className="py-2 pr-3">Хүүхэд</th>
+                    <th className="px-2 py-2 text-center">Бүлэг</th>
                     <th className="px-2 py-2 text-center">Эзэмшсэн</th>
                     <th className="px-2 py-2 text-center">Хувь</th>
                     <th className="px-2 py-2 text-center">Дүгнэлт</th>
@@ -408,6 +414,7 @@ export default async function OutcomeReportPage({
                         <td className="py-2 pr-3 font-medium text-slate-800">
                           {formatChildName(child.first_name, child.last_name)}
                         </td>
+                        <td className="px-2 py-2 text-center text-slate-600">{child.groups?.name}</td>
                         <td className="px-2 py-2 text-center">
                           {total > 0 ? `${achieved}/${total}` : "—"}
                         </td>

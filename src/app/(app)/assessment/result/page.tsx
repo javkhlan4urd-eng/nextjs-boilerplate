@@ -86,7 +86,12 @@ export default async function ResultAssessmentPage({
   }
   const achievedSet = new Set(filteredChecks.map((c) => `${c.child_id}|${c.criterion_id}`));
 
-  const childSummaries = children.map((child) => {
+  const sortedChildren = [...children].sort((a, b) => {
+    const groupCmp = (a.groups?.name ?? "").localeCompare(b.groups?.name ?? "");
+    return groupCmp !== 0 ? groupCmp : a.first_name.localeCompare(b.first_name);
+  });
+
+  const childSummaries = sortedChildren.map((child) => {
     const level = child.groups?.level ?? null;
     let levelCriteria = level ? criteria.filter((c) => c.level === level) : [];
     if (selectedCategory) levelCriteria = levelCriteria.filter((c) => c.category === selectedCategory);
