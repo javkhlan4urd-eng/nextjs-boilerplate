@@ -44,29 +44,41 @@ export default async function ChildrenPage({
     countByGroup[c.group_id] = (countByGroup[c.group_id] ?? 0) + 1;
   }
 
-  let query = supabase
+  if (!group) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <h1 className="text-xl font-semibold text-slate-900">Бүлгүүд</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Бүлгээ сонгож тухайн бүлгийн хүүхдүүдийг харна уу.
+        </p>
+
+        <GroupsPanel groups={groups ?? []} childCount={countByGroup} collapsible={false} />
+      </div>
+    );
+  }
+
+  const { data: children } = await supabase
     .from("children")
     .select("*, groups!inner(teacher_id, name)")
     .eq("groups.teacher_id", user!.id)
+    .eq("group_id", group)
     .order("first_name");
 
-  if (group) query = query.eq("group_id", group);
-
-  const { data: children } = await query;
+  const selectedGroup = groups?.find((g) => g.id === group);
 
   return (
     <div className="mx-auto max-w-4xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Хүүхдүүд</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {group
-              ? `${groups?.find((g) => g.id === group)?.name ?? ""} бүлгийн хүүхдүүд`
-              : "Бүх бүлгийн хүүхдүүд"}
-          </p>
+          <Link href="/children" className="text-sm font-medium text-indigo-600 hover:underline">
+            ← Бүх бүлэг
+          </Link>
+          <h1 className="mt-1 text-xl font-semibold text-slate-900">
+            {selectedGroup?.name ?? ""} бүлгийн хүүхдүүд
+          </h1>
         </div>
         <Link
-          href={group ? `/children/new?group=${group}` : "/children/new"}
+          href={`/children/new?group=${group}`}
           className="rounded-lg bg-gradient-to-r from-indigo-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-indigo-200 hover:opacity-95"
         >
           + Хүүхэд нэмэх
@@ -74,34 +86,6 @@ export default async function ChildrenPage({
       </div>
 
       <GroupsPanel groups={groups ?? []} childCount={countByGroup} />
-
-      {groups && groups.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href="/children"
-            className={`rounded-full px-3 py-1 text-sm font-medium ${
-              !group
-                ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
-                : "bg-white text-slate-600 border border-slate-200"
-            }`}
-          >
-            Бүгд
-          </Link>
-          {groups.map((g) => (
-            <Link
-              key={g.id}
-              href={`/children?group=${g.id}`}
-              className={`rounded-full px-3 py-1 text-sm font-medium ${
-                group === g.id
-                  ? "bg-gradient-to-r from-indigo-600 to-teal-500 text-white shadow-sm"
-                  : "bg-white text-slate-600 border border-slate-200"
-              }`}
-            >
-              {g.name}
-            </Link>
-          ))}
-        </div>
-      )}
 
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {children && children.length > 0 ? (
@@ -136,7 +120,7 @@ export default async function ChildrenPage({
           ))
         ) : (
           <p className="col-span-2 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-            Хүүхэд олдсонгүй. Эхлээд бүлэг үүсгээд хүүхэд нэмнэ үү.
+            Энэ бүлэгт хүүхэд алга. Дээрх товчоор хүүхэд нэмнэ үү.
           </p>
         )}
       </div>
