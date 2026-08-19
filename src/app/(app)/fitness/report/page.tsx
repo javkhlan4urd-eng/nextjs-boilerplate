@@ -3,7 +3,12 @@ import { avgByTest, levelDistribution, latestPerChild, compareSeasons, compareBy
 import { TestAverageBar, LevelDistributionBar, SeasonComparisonBar, GroupComparisonBar } from "@/components/FitnessCharts";
 import PrintButton from "@/components/PrintButton";
 import GroupSummaryEditor from "@/components/GroupSummaryEditor";
-import { generateFitnessSummaryDraft, saveFitnessSummary } from "./actions";
+import {
+  generateFitnessSummaryDraft,
+  saveFitnessSummary,
+  generateFitnessOverallSummaryDraft,
+  saveFitnessOverallSummary,
+} from "./actions";
 import { formatChildName } from "@/lib/childName";
 
 export default async function FitnessReportPage({
@@ -89,6 +94,7 @@ export default async function FitnessReportPage({
   const yearLabel = sp.year ? ` · ${sp.year} хичээлийн жил` : "";
 
   let existingSummary = "";
+  let existingOverallSummary = "";
   if (sp.group) {
     const { data: summaryRow } = await supabase
       .from("fitness_summaries")
@@ -96,6 +102,13 @@ export default async function FitnessReportPage({
       .eq("group_id", sp.group)
       .maybeSingle();
     existingSummary = summaryRow?.content ?? "";
+  } else {
+    const { data: overallRow } = await supabase
+      .from("fitness_overall_summaries")
+      .select("content")
+      .eq("teacher_id", user!.id)
+      .maybeSingle();
+    existingOverallSummary = overallRow?.content ?? "";
   }
 
   return (
@@ -254,7 +267,7 @@ export default async function FitnessReportPage({
               </p>
             </div>
 
-            {sp.group && (
+            {sp.group ? (
               <div className="no-print mt-8 rounded-xl border border-slate-200 p-4">
                 <h3 className="text-sm font-semibold text-slate-800">Нэгдсэн дүгнэлт</h3>
                 <p className="mt-1 text-xs text-slate-500">
@@ -266,6 +279,20 @@ export default async function FitnessReportPage({
                   initialContent={existingSummary}
                   generateAction={generateFitnessSummaryDraft}
                   saveAction={saveFitnessSummary}
+                />
+              </div>
+            ) : (
+              <div className="no-print mt-8 rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-800">Нэгдсэн дүгнэлт (бүх бүлэг)</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Бүлэг тус бүрийн дүгнэлт дээр үндэслэн бүх бүлгийг хамарсан нэгдсэн дүгнэлт — AI-аар бэлтгэх
+                  эсвэл өөрөө шивж бичих боломжтой.
+                </p>
+                <GroupSummaryEditor
+                  groupId="all"
+                  initialContent={existingOverallSummary}
+                  generateAction={generateFitnessOverallSummaryDraft}
+                  saveAction={saveFitnessOverallSummary}
                 />
               </div>
             )}
