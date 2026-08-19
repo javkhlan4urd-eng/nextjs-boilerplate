@@ -55,3 +55,65 @@ export function verdictStyle(verdict: string): { bg: string; text: string } {
       return { bg: "bg-red-100", text: "text-red-700" };
   }
 }
+
+export interface ReadinessGroupStats {
+  childCount: number;
+  categoryTotals: { category: string; achieved: number; total: number }[];
+  overallAchieved: number;
+  overallTotal: number;
+  criterionStats: {
+    id: string;
+    description: string;
+    category: string;
+    achieved: number;
+    total: number;
+    pct: number;
+  }[];
+}
+
+export function computeReadinessGroupStats(
+  children: { id: string; level: number | null }[],
+  criteria: { id: string; level: number; category: string; description: string }[],
+  achievedSet: Set<string>
+): ReadinessGroupStats {
+  const categoryTotals = CATEGORY_ORDER.map((cat) => {
+    let total = 0;
+    let achieved = 0;
+    for (const child of children) {
+      if (!child.level) continue;
+      const items = criteria.filter((c) => c.level === child.level && c.category === cat);
+      total += items.length;
+      achieved += items.filter((c) => achievedSet.has(`${child.id}|${c.id}`)).length;
+    }
+    return { category: cat, achieved, total };
+  });
+
+  const overallAchieved = categoryTotals.reduce((s, c) => s + c.achieved, 0);
+  const overallTotal = categoryTotals.reduce((s, c) => s + c.total, 0);
+
+  const criterionStatsMap = new Map<string, { achieved: number; total: number }>();
+  for (const child of children) {
+    if (!child.level) continue;
+    for (const c of criteria.filter((c) => c.level === child.level)) {
+      const cur = criterionStatsMap.get(c.id) ?? { achieved: 0, total: 0 };
+      cur.total += 1;
+      if (achievedSet.has(`${child.id}|${c.id}`)) cur.achieved += 1;
+      criterionStatsMap.set(c.id, cur);
+    }
+  }
+  const criterionStats = criteria
+    .filter((c) => criterionStatsMap.has(c.id))
+    .map((c) => {
+      const s = criterionStatsMap.get(c.id)!;
+      return {
+        id: c.id,
+        description: c.description,
+        category: c.category,
+        achieved: s.achieved,
+        total: s.total,
+        pct: s.total > 0 ? Math.round((s.achieved / s.total) * 100) : 0,
+      };
+    });
+
+  return { childCount: children.length, categoryTotals, overallAchieved, overallTotal, criterionStats };
+}

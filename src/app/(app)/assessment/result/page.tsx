@@ -5,6 +5,7 @@ import { CategoryAchievedBar } from "@/components/OutcomeCharts";
 import PrintButton from "@/components/PrintButton";
 import { formatChildName } from "@/lib/childName";
 import AutoSubmitSelect from "@/components/AutoSubmitSelect";
+import ReadinessSummaryEditor from "@/components/ReadinessSummaryEditor";
 
 function formatMonthLabel(month: string) {
   const [year, m] = month.split("-");
@@ -107,6 +108,16 @@ export default async function ResultAssessmentPage({
 
   const groupLabel = sp.group ? groups?.find((g) => g.id === sp.group)?.name ?? "" : "Бүх бүлэг";
   const yearLabel = sp.schoolYear ? ` · ${sp.schoolYear} хичээлийн жил` : "";
+
+  let existingSummary = "";
+  if (sp.group) {
+    const { data: summaryRow } = await supabase
+      .from("readiness_summaries")
+      .select("content")
+      .eq("group_id", sp.group)
+      .maybeSingle();
+    existingSummary = summaryRow?.content ?? "";
+  }
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -230,6 +241,18 @@ export default async function ResultAssessmentPage({
                 </tbody>
               </table>
             </div>
+
+            {sp.group && (
+              <div className="no-print mt-8 rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-800">Жилийн эцсийн дүгнэлт</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  {groupLabel}
+                  {yearLabel} бүлгийн энэ хичээлийн жилийн Үр дүнгийн үнэлгээний нэгдсэн дүгнэлт — AI-аар
+                  бэлтгэх эсвэл өөрөө шивж бичих боломжтой.
+                </p>
+                <ReadinessSummaryEditor groupId={sp.group} initialContent={existingSummary} />
+              </div>
+            )}
           </>
         )}
       </div>
