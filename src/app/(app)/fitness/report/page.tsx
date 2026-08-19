@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
-import { avgByTest, levelDistribution, latestPerChild, type FitnessRow } from "@/lib/fitnessAnalysis";
-import { TestAverageBar, LevelDistributionBar } from "@/components/FitnessCharts";
+import { avgByTest, levelDistribution, latestPerChild, compareSeasons, compareByGroup, type FitnessRow } from "@/lib/fitnessAnalysis";
+import { TestAverageBar, LevelDistributionBar, SeasonComparisonBar, GroupComparisonBar } from "@/components/FitnessCharts";
 import PrintButton from "@/components/PrintButton";
+import GroupSummaryEditor from "@/components/GroupSummaryEditor";
+import { generateFitnessSummaryDraft, saveFitnessSummary } from "./actions";
 import { formatChildName } from "@/lib/childName";
 
 export default async function FitnessReportPage({
@@ -26,7 +28,9 @@ export default async function FitnessReportPage({
   ).sort();
 
   const today = new Date().toISOString().slice(0, 10);
-  const defaultFrom = new Date(new Date().setFullYear(new Date().getFullYear() - 1))
+  // Намар-хаврын ахицыг харьцуулахын тулд анхны хугацааны муж дор хаяж 2 хичээлийн жил
+  // (4 улирал хүртэл) багтаана — 1 жилийн цонх заримдаа зөвхөн сүүлийн нэг улирлыг л авдаг байсан.
+  const defaultFrom = new Date(new Date().setFullYear(new Date().getFullYear() - 2))
     .toISOString()
     .slice(0, 10);
   const from = sp.from || defaultFrom;
@@ -61,8 +65,38 @@ export default async function FitnessReportPage({
     return (ca.last_name ?? "").localeCompare(cb.last_name ?? "") || ca.first_name.localeCompare(cb.first_name);
   }) as RawRow[];
 
+  const seasons = compareSeasons(rows);
+  const seasonChartData = (() => {
+    const byYear = new Map<string, { schoolYear: string; намар: number | null; хавар: number | null }>();
+    for (const s of seasons) {
+      const entry = byYear.get(s.schoolYear) ?? { schoolYear: s.schoolYear, намар: null, хавар: null };
+      entry[s.season] = s.avgTotal;
+      byYear.set(s.schoolYear, entry);
+    }
+    return Array.from(byYear.values());
+  })();
+  const latestYear = seasons.length > 0 ? seasons[seasons.length - 1].schoolYear : null;
+  const latestNamar = seasons.find((s) => s.schoolYear === latestYear && s.season === "намар") ?? null;
+  const latestHawar = seasons.find((s) => s.schoolYear === latestYear && s.season === "хавар") ?? null;
+
+  const groupComparison = !sp.group
+    ? compareByGroup(
+        (rows as RawRow[]).map((r) => ({ ...r, groupName: r.children.groups?.name ?? "—" }))
+      )
+    : [];
+
   const groupLabel = sp.group ? groups?.find((g) => g.id === sp.group)?.name ?? "" : "Бүх бүлэг (нэгдсэн)";
   const yearLabel = sp.year ? ` · ${sp.year} хичээлийн жил` : "";
+
+  let existingSummary = "";
+  if (sp.group) {
+    const { data: summaryRow } = await supabase
+      .from("fitness_summaries")
+      .select("content")
+      .eq("group_id", sp.group)
+      .maybeSingle();
+    existingSummary = summaryRow?.content ?? "";
+  }
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -132,6 +166,37 @@ export default async function FitnessReportPage({
           </p>
         ) : (
           <>
+            {seasonChartData.length > 0 && (
+              <div className="mt-6 rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-800">
+                  Намар — Хаврын ахицын харьцуулалт (нийт оноо, 12-оос)
+                </h3>
+                <SeasonComparisonBar data={seasonChartData} />
+                {latestNamar && latestHawar && (
+                  <p className="mt-2 text-sm text-slate-600">
+                    {latestYear} хичээлийн жилд намарын дундаж <strong>{latestNamar.avgTotal}</strong>-с хаврын
+                    дундаж <strong>{latestHawar.avgTotal}</strong> болж,{" "}
+                    <span
+                      className={
+                        latestHawar.avgTotal - latestNamar.avgTotal >= 0 ? "font-semibold text-emerald-600" : "font-semibold text-rose-600"
+                      }
+                    >
+                      {latestHawar.avgTotal - latestNamar.avgTotal >= 0 ? "+" : ""}
+                      {(latestHawar.avgTotal - latestNamar.avgTotal).toFixed(1)}
+                    </span>{" "}
+                    оноогийн өөрчлөлттэй байна.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {groupComparison.length > 1 && (
+              <div className="mt-6 rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-800">Бүлгүүдийн харьцуулалт (дундаж нийт оноо)</h3>
+                <GroupComparisonBar data={groupComparison} />
+              </div>
+            )}
+
             <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="rounded-xl border border-slate-200 p-4">
                 <h3 className="text-sm font-semibold text-slate-800">Дундаж оноо сорил тус бүрээр (1-3)</h3>
@@ -188,6 +253,22 @@ export default async function FitnessReportPage({
                 Оноо: 3 = Маш сайн, 2 = Хангалттай, 1 = Дэмжлэг хэрэгтэй (сорил тус бүрээр)
               </p>
             </div>
+
+            {sp.group && (
+              <div className="no-print mt-8 rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-800">Нэгдсэн дүгнэлт</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  {groupLabel} бүлгийн Биеийн тамирын сорилын нэгдсэн дүгнэлт — AI-аар бэлтгэх эсвэл өөрөө шивж
+                  бичих боломжтой.
+                </p>
+                <GroupSummaryEditor
+                  groupId={sp.group}
+                  initialContent={existingSummary}
+                  generateAction={generateFitnessSummaryDraft}
+                  saveAction={saveFitnessSummary}
+                />
+              </div>
+            )}
           </>
         )}
         </div>

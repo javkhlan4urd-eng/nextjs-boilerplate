@@ -7,6 +7,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   Cell,
   ResponsiveContainer,
 } from "recharts";
@@ -29,6 +30,46 @@ export function TestAverageBar({ data }: { data: { test: string; avg: number }[]
         <Bar dataKey="avg" radius={[4, 4, 0, 0]}>
           {data.map((_, i) => (
             <Cell key={i} fill={TEST_COLORS[i % TEST_COLORS.length]} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+export function SeasonComparisonBar({
+  data,
+}: {
+  data: { schoolYear: string; намар: number | null; хавар: number | null }[];
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={280}>
+      <BarChart data={data} margin={{ left: 0, right: 16 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="schoolYear" tick={{ fontSize: 11 }} />
+        <YAxis domain={[0, 12]} tickCount={7} tick={{ fontSize: 11 }} />
+        <Tooltip />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Bar dataKey="намар" fill="#f97316" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="хавар" fill="#0891b2" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
+const GROUP_COLORS = ["#4f46e5", "#0891b2", "#16a34a", "#ca8a04", "#dc2626", "#9333ea"];
+
+export function GroupComparisonBar({ data }: { data: { group: string; avgTotal: number }[] }) {
+  return (
+    <ResponsiveContainer width="100%" height={Math.max(180, data.length * 50)}>
+      <BarChart data={data} layout="vertical" margin={{ left: 16, right: 16 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis type="number" domain={[0, 12]} tick={{ fontSize: 11 }} />
+        <YAxis type="category" dataKey="group" width={110} tick={{ fontSize: 11 }} />
+        <Tooltip />
+        <Bar dataKey="avgTotal" radius={[0, 4, 4, 0]}>
+          {data.map((_, i) => (
+            <Cell key={i} fill={GROUP_COLORS[i % GROUP_COLORS.length]} />
           ))}
         </Bar>
       </BarChart>

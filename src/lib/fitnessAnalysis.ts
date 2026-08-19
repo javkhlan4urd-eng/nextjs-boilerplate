@@ -52,3 +52,60 @@ export function latestPerChild(rows: FitnessRow[]) {
   }
   return map;
 }
+
+export type Season = "намар" | "хавар";
+
+export function seasonOf(dateStr: string): Season {
+  const m = new Date(dateStr).getMonth() + 1;
+  return m >= 8 ? "намар" : "хавар";
+}
+
+export function schoolYearOf(dateStr: string): string {
+  const d = new Date(dateStr);
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  return m >= 8 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
+}
+
+function avgTotal(rows: FitnessRow[]) {
+  const totals = rows.map((r) => r.total_score).filter((v): v is number => v !== null);
+  return totals.length > 0 ? Number((totals.reduce((a, b) => a + b, 0) / totals.length).toFixed(2)) : 0;
+}
+
+export interface SeasonStat {
+  schoolYear: string;
+  season: Season;
+  avgTotal: number;
+  testAvg: { test: string; avg: number; count: number }[];
+  count: number;
+}
+
+export function compareSeasons(rows: FitnessRow[]): SeasonStat[] {
+  const groups = new Map<string, FitnessRow[]>();
+  for (const r of rows) {
+    const key = `${schoolYearOf(r.tested_on)}|${seasonOf(r.tested_on)}`;
+    const arr = groups.get(key) ?? [];
+    arr.push(r);
+    groups.set(key, arr);
+  }
+  return Array.from(groups.entries())
+    .map(([key, rs]) => {
+      const [schoolYear, season] = key.split("|") as [string, Season];
+      return { schoolYear, season, avgTotal: avgTotal(rs), testAvg: avgByTest(rs), count: rs.length };
+    })
+    .sort((a, b) => a.schoolYear.localeCompare(b.schoolYear) || (a.season === "намар" ? -1 : 1));
+}
+
+export function compareByGroup(
+  rows: (FitnessRow & { groupName: string })[]
+): { group: string; avgTotal: number; count: number }[] {
+  const groups = new Map<string, FitnessRow[]>();
+  for (const r of rows) {
+    const arr = groups.get(r.groupName) ?? [];
+    arr.push(r);
+    groups.set(r.groupName, arr);
+  }
+  return Array.from(groups.entries())
+    .map(([group, rs]) => ({ group, avgTotal: avgTotal(rs), count: rs.length }))
+    .sort((a, b) => b.avgTotal - a.avgTotal);
+}
