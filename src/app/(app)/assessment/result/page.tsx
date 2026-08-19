@@ -65,9 +65,29 @@ export default async function ResultAssessmentPage({
     checks = data ?? [];
   }
 
-  const monthOptions = Array.from(new Set(checks.map((c) => c.checked_on.slice(0, 7)))).sort();
-  const effectiveMonth = sp.month ?? monthOptions[monthOptions.length - 1];
-  const filteredChecks = effectiveMonth ? checks.filter((c) => c.checked_on.slice(0, 7) === effectiveMonth) : checks;
+  // A single "effective month" only makes sense when scoped to one group — different
+  // groups are commonly assessed in entirely different months/years (e.g. a group's
+  // historical data from a prior school year), so forcing one shared month across all
+  // groups would incorrectly zero out everyone outside that one month.
+  const monthOptions = sp.group
+    ? Array.from(new Set(checks.map((c) => c.checked_on.slice(0, 7)))).sort()
+    : [];
+  const effectiveMonth = sp.group ? sp.month ?? monthOptions[monthOptions.length - 1] : null;
+
+  let filteredChecks: typeof checks;
+  if (effectiveMonth) {
+    filteredChecks = checks.filter((c) => c.checked_on.slice(0, 7) === effectiveMonth);
+  } else {
+    // No group scope: keep only the most recent check per child+criterion instead of
+    // blending every historical assessment together.
+    const latestByKey = new Map<string, (typeof checks)[number]>();
+    for (const c of checks) {
+      const key = `${c.child_id}|${c.criterion_id}`;
+      const existing = latestByKey.get(key);
+      if (!existing || c.checked_on > existing.checked_on) latestByKey.set(key, c);
+    }
+    filteredChecks = Array.from(latestByKey.values());
+  }
   const achievedSet = new Set(filteredChecks.map((c) => `${c.child_id}|${c.criterion_id}`));
 
   const childSummaries = children.map((child) => {
@@ -136,7 +156,7 @@ export default async function ResultAssessmentPage({
         {monthOptions.length > 0 && (
           <div>
             <label className="block text-xs font-medium text-slate-500">Сар</label>
-            <select name="month" defaultValue={effectiveMonth} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <select name="month" defaultValue={effectiveMonth ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
               {monthOptions.map((m) => (
                 <option key={m} value={m}>
                   {formatMonthLabel(m)}
