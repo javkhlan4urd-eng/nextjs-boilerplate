@@ -66,7 +66,8 @@ export default async function ResultAssessmentPage({
   }
 
   const monthOptions = Array.from(new Set(checks.map((c) => c.checked_on.slice(0, 7)))).sort();
-  const filteredChecks = sp.month ? checks.filter((c) => c.checked_on.slice(0, 7) === sp.month) : checks;
+  const effectiveMonth = sp.month ?? monthOptions[monthOptions.length - 1];
+  const filteredChecks = effectiveMonth ? checks.filter((c) => c.checked_on.slice(0, 7) === effectiveMonth) : checks;
   const achievedSet = new Set(filteredChecks.map((c) => `${c.child_id}|${c.criterion_id}`));
 
   const childSummaries = children.map((child) => {
@@ -135,8 +136,7 @@ export default async function ResultAssessmentPage({
         {monthOptions.length > 0 && (
           <div>
             <label className="block text-xs font-medium text-slate-500">Сар</label>
-            <select name="month" defaultValue={sp.month ?? ""} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
-              <option value="">Бүх сар</option>
+            <select name="month" defaultValue={effectiveMonth} className="mt-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
               {monthOptions.map((m) => (
                 <option key={m} value={m}>
                   {formatMonthLabel(m)}
@@ -156,7 +156,7 @@ export default async function ResultAssessmentPage({
         <p className="text-sm text-slate-500">
           {groupLabel}
           {yearLabel}
-          {sp.month ? ` · ${formatMonthLabel(sp.month)}` : ""} · Хамрагдсан хүүхэд: {children.length}
+          {effectiveMonth ? ` · ${formatMonthLabel(effectiveMonth)}` : ""} · Хамрагдсан хүүхэд: {children.length}
         </p>
 
         {children.length === 0 ? (
