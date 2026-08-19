@@ -5,15 +5,19 @@ import Link from "next/link";
 import type { Group } from "@/types/database";
 import { updateGroup, deleteGroup } from "@/app/(app)/groups/actions";
 import { GROUP_LEVEL_LABELS } from "@/lib/readiness";
+import { groupTheme } from "@/lib/colors";
 
 export default function GroupRow({
   group,
   childCount,
+  colorful = false,
 }: {
   group: Group;
   childCount: number;
+  colorful?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
+  const theme = groupTheme(group.level);
 
   if (editing) {
     return (
@@ -22,7 +26,9 @@ export default function GroupRow({
           await updateGroup(fd);
           setEditing(false);
         }}
-        className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/50 p-4"
+        className={`flex flex-wrap items-center gap-2 rounded-xl border p-4 ${
+          colorful ? `border-transparent ring-2 ${theme.ring} ${theme.chip}` : "border-indigo-200 bg-indigo-50/50"
+        }`}
       >
         <input type="hidden" name="id" value={group.id} />
         <input
@@ -63,6 +69,64 @@ export default function GroupRow({
           Болих
         </button>
       </form>
+    );
+  }
+
+  if (colorful) {
+    return (
+      <div className="group relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-sm shadow-slate-100 transition hover:-translate-y-0.5 hover:shadow-md">
+        <div className={`h-2 w-full bg-gradient-to-r ${theme.from} ${theme.to}`} />
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-2">
+            <Link href={`/children?group=${group.id}`} className="flex items-center gap-2.5">
+              <span
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${theme.from} ${theme.to} text-xl shadow-sm`}
+              >
+                {theme.emoji}
+              </span>
+              <span className="text-lg font-semibold text-slate-900 group-hover:text-indigo-700">
+                {group.name}
+              </span>
+            </Link>
+            <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${theme.chip}`}>
+              {childCount} хүүхэд
+            </span>
+          </div>
+
+          <p className="mt-2 text-sm text-slate-500">
+            {group.school_year ? `${group.school_year} · ` : ""}
+            {group.level ? GROUP_LEVEL_LABELS[group.level].split(" — ")[1] : "Насны түвшин тохируулаагүй"}
+          </p>
+
+          <div className="mt-4 flex items-center gap-2">
+            <Link
+              href={`/children?group=${group.id}`}
+              className={`flex-1 rounded-lg bg-gradient-to-r ${theme.from} ${theme.to} px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:opacity-90`}
+            >
+              Хүүхдүүдийг харах →
+            </Link>
+            <button
+              onClick={() => setEditing(true)}
+              className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+              title="Засах"
+            >
+              ✏️
+            </button>
+            <form
+              action={async (fd) => {
+                if (confirm(`"${group.name}" бүлгийг устгах уу? Бүх хүүхэд, ажиглалт устана.`)) {
+                  await deleteGroup(fd);
+                }
+              }}
+            >
+              <input type="hidden" name="id" value={group.id} />
+              <button type="submit" className="rounded-lg p-2 text-rose-500 hover:bg-rose-50" title="Устгах">
+                🗑️
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
     );
   }
 
