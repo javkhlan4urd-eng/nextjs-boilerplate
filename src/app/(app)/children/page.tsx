@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatChildName } from "@/lib/childName";
+import GroupsPanel from "@/components/GroupsPanel";
 
 function calcAge(birthDate: string | null) {
   if (!birthDate) return null;
@@ -29,9 +30,19 @@ export default async function ChildrenPage({
 
   const { data: groups } = await supabase
     .from("groups")
-    .select("id, name")
+    .select("*")
     .eq("teacher_id", user!.id)
     .order("name");
+
+  const { data: allChildren } = await supabase
+    .from("children")
+    .select("id, group_id")
+    .in("group_id", (groups ?? []).map((g) => g.id));
+
+  const countByGroup: Record<string, number> = {};
+  for (const c of allChildren ?? []) {
+    countByGroup[c.group_id] = (countByGroup[c.group_id] ?? 0) + 1;
+  }
 
   let query = supabase
     .from("children")
@@ -61,6 +72,8 @@ export default async function ChildrenPage({
           + Хүүхэд нэмэх
         </Link>
       </div>
+
+      <GroupsPanel groups={groups ?? []} childCount={countByGroup} />
 
       {groups && groups.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">

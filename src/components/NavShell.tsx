@@ -7,8 +7,7 @@ import LogoutButton from "./LogoutButton";
 
 const NAV_ITEMS = [
   { href: "/", label: "Нүүр" },
-  { href: "/groups", label: "Бүлэг" },
-  { href: "/children", label: "Хүүхдүүд" },
+  { href: "/children", label: "Бүлэг, хүүхдүүд" },
   { href: "/assessment/yavts", label: "Явцын үнэлгээ" },
   { href: "/assessment", label: "Үнэлгээ" },
   { href: "/fitness", label: "Биеийн тамирын сорил" },

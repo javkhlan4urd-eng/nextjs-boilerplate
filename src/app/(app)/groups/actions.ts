@@ -24,7 +24,7 @@ export async function createGroup(formData: FormData) {
   });
   if (error) throw new Error(error.message);
 
-  revalidatePath("/groups");
+  revalidatePath("/children");
 }
 
 export async function updateGroup(formData: FormData) {
@@ -42,7 +42,7 @@ export async function updateGroup(formData: FormData) {
     .eq("id", id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/groups");
+  revalidatePath("/children");
 }
 
 export async function deleteGroup(formData: FormData) {
@@ -52,5 +52,5 @@ export async function deleteGroup(formData: FormData) {
   const { error } = await supabase.from("groups").delete().eq("id", id);
   if (error) throw new Error(error.message);
 
-  revalidatePath("/groups");
+  revalidatePath("/children");
 }

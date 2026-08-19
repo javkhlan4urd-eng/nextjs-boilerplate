@@ -60,7 +60,7 @@ export default async function HomePage() {
   ]);
 
   const stats = [
-    { label: "Бүлэг", value: groupCount ?? 0, href: "/groups", from: "from-indigo-500", to: "to-violet-500", icon: "🏫" },
+    { label: "Бүлэг", value: groupCount ?? 0, href: "/children", from: "from-indigo-500", to: "to-violet-500", icon: "🏫" },
     { label: "Хүүхэд", value: childCount ?? 0, href: "/children", from: "from-teal-500", to: "to-emerald-500", icon: "🧒" },
     { label: "Энэ сарын ажиглалт", value: obsMonthCount ?? 0, href: "/assessment/yavts", from: "from-amber-400", to: "to-orange-500", icon: "📝" },
     { label: "Биеийн тамирын сорил", value: fitnessCount ?? 0, href: "/fitness", from: "from-rose-500", to: "to-pink-500", icon: "🏃" },
