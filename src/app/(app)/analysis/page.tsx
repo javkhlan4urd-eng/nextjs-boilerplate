@@ -88,10 +88,15 @@ export default async function AnalysisPage({
     .eq("teacher_id", user!.id)
     .order("sort_order");
 
+  // Энэ хэсгийн дүн шинжилгээ (радар, сарын хандлага, хугацааны харьцуулалт) зөвхөн Явцын
+  // үнэлгээнд (stage="yavts" эсвэл хуучин бичлэгүүдийн stage=null) үндэслэнэ — Гарааны
+  // (эхлэлийн) нэг удаагийн үнэлгээг доор тусад нь бүлгээр харьцуулдаг тул энд оруулбал сар
+  // бүрийн хандлагыг андуурна.
   let obsQuery = supabase
     .from("observations")
     .select("domain_id, level, observed_on, children!inner(group_id, groups!inner(teacher_id, school_year))")
     .eq("children.groups.teacher_id", user!.id)
+    .or("stage.eq.yavts,stage.is.null")
     .not("level", "is", null);
   if (sp.group) obsQuery = obsQuery.eq("children.group_id", sp.group);
   if (sp.child) obsQuery = obsQuery.eq("child_id", sp.child);
@@ -295,30 +300,38 @@ export default async function AnalysisPage({
         </button>
       </form>
 
+      <div className="mt-6">
+        <h2 className="text-base font-semibold text-slate-900">🔄 Явцын үнэлгээ — чиглэл, хугацааны дүн шинжилгээ</h2>
+        <p className="mt-0.5 text-xs text-slate-500">
+          Доорх 3 диаграм зөвхөн Явцын үнэлгээний (тогтмол хийгддэг ажиглалт) дата дээр үндэслэнэ — Гарааны
+          (эхлэлийн, нэг удаагийн) үнэлгээ доор тусад нь, бүлгээр харьцуулагдана.
+        </p>
+      </div>
+
       {yearRows.length === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-          Сонгосон хугацаанд ажиглалтын мэдээлэл алга байна. Эхлээд Ажиглалт тэмдэглэл цэснээс
+        <p className="mt-4 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+          Сонгосон хугацаанд Явцын үнэлгээний мэдээлэл алга байна. Эхлээд Ажиглалт тэмдэглэл цэснээс
           бүртгэл хийнэ үү.
         </p>
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 className="text-sm font-semibold text-slate-800">
-              {year} оны чиглэл тус бүрийн дундаж түвшин
-            </h2>
+            <h3 className="text-sm font-semibold text-slate-800">
+              {year} оны чиглэл тус бүрийн дундаж түвшин (Явцын үнэлгээ)
+            </h3>
             <DomainRadar data={radarData} />
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <h2 className="text-sm font-semibold text-slate-800">
-              {year} оны сар бүрийн хандлага
-            </h2>
+            <h3 className="text-sm font-semibold text-slate-800">
+              {year} оны сар бүрийн хандлага (Явцын үнэлгээ)
+            </h3>
             <MonthlyTrend data={trendData} domainNames={domainNames} />
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-slate-800">Хугацааны харьцуулалт</h2>
+              <h3 className="text-sm font-semibold text-slate-800">Хугацааны харьцуулалт (Явцын үнэлгээ)</h3>
               {periods.length >= 2 && (
                 <form className="flex flex-wrap gap-2">
                   <input type="hidden" name="group" value={sp.group ?? ""} />
