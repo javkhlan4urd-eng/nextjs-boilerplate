@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
   avgByDomain,
@@ -41,6 +42,7 @@ export default async function AnalysisPage({
     periodB?: string;
     readinessYearA?: string;
     readinessYearB?: string;
+    garaaGroups?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -194,15 +196,48 @@ export default async function AnalysisPage({
         schoolYear: c.groups?.school_year ?? null,
       };
     });
-  const groupGaraaComparison = compareGaraaByGroup(allGaraaRows, domainList);
+  const groupGaraaComparisonRaw = compareGaraaByGroup(allGaraaRows, domainList);
+  const garaaStatsByGroupId = new Map(groupGaraaComparisonRaw.map((g) => [g.groupId, g]));
+  const allGroupGaraaStats = (groups ?? []).map((g) => {
+    const existing = garaaStatsByGroupId.get(g.id);
+    if (existing) return existing;
+    const emptyDomainPct: Record<string, number> = {};
+    for (const d of domainList) emptyDomainPct[d.name] = 0;
+    return {
+      groupId: g.id,
+      groupName: g.name,
+      schoolYear: g.school_year,
+      domainPct: emptyDomainPct,
+      overallPct: 0,
+      count: 0,
+    };
+  });
+  const allGaraaGroupIds = allGroupGaraaStats.map((g) => g.groupId);
+  const selectedGaraaGroupIds =
+    sp.garaaGroups === "none" ? [] : sp.garaaGroups ? sp.garaaGroups.split(",").filter(Boolean) : allGaraaGroupIds;
+  const groupGaraaComparison = allGroupGaraaStats.filter((g) => selectedGaraaGroupIds.includes(g.groupId));
+
+  function garaaGroupsHref(nextIds: string[]) {
+    const params = new URLSearchParams();
+    if (sp.group) params.set("group", sp.group);
+    if (sp.child) params.set("child", sp.child);
+    if (sp.schoolYear) params.set("schoolYear", sp.schoolYear);
+    if (sp.year) params.set("year", sp.year);
+    if (sp.granularity) params.set("granularity", sp.granularity);
+    if (nextIds.length === 0) params.set("garaaGroups", "none");
+    else if (nextIds.length < allGaraaGroupIds.length) params.set("garaaGroups", nextIds.join(","));
+    return `?${params.toString()}`;
+  }
+
+  const groupGaraaWithData = groupGaraaComparison.filter((g) => g.count > 0);
   const groupGaraaChartData = domainList.map((d) => {
     const row: Record<string, number | string> = { category: d.name };
-    for (const g of groupGaraaComparison) {
+    for (const g of groupGaraaWithData) {
       row[`${g.groupName}${g.schoolYear ? ` (${g.schoolYear})` : ""}`] = g.domainPct[d.name] ?? 0;
     }
     return row;
   });
-  const groupGaraaChartKeys = groupGaraaComparison.map((g) => `${g.groupName}${g.schoolYear ? ` (${g.schoolYear})` : ""}`);
+  const groupGaraaChartKeys = groupGaraaWithData.map((g) => `${g.groupName}${g.schoolYear ? ` (${g.schoolYear})` : ""}`);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -327,48 +362,102 @@ export default async function AnalysisPage({
         </div>
       )}
 
-      {groupGaraaComparison.length > 0 && (
+      {allGroupGaraaStats.length > 0 && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
           <h2 className="text-sm font-semibold text-slate-800">
             Бүлгүүдийн Гарааны үнэлгээ — чиглэлээр харьцуулах
           </h2>
           <p className="text-xs text-slate-500">
-            Дунд, Ахлах, Бэлтгэл зэрэг бүх бүлгийн (өөрийн хичээлийн жилтэй нь хамт) Гарааны үнэлгээг
-            суралцахуйн 7 чиглэл тус бүрээр зэрэгцүүлж харьцуулна.
+            Дунд, Ахлах, Бэлтгэл зэрэг бүлгүүдээ сонгож, тэдгээрийн (өөрийн хичээлийн жилтэй нь хамт) Гарааны
+            үнэлгээг суралцахуйн 7 чиглэл тус бүрээр зэрэгцүүлж харьцуулна.
           </p>
-          <div className="mt-4">
-            <GroupCategoryComparisonBar data={groupGaraaChartData} groupKeys={groupGaraaChartKeys} />
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href={garaaGroupsHref(allGaraaGroupIds)}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                selectedGaraaGroupIds.length === allGaraaGroupIds.length
+                  ? "bg-gradient-to-r from-fuchsia-600 to-violet-500 text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-slate-600"
+              }`}
+            >
+              Бүгд
+            </Link>
+            {allGroupGaraaStats.map((g) => {
+              const active = selectedGaraaGroupIds.includes(g.groupId);
+              const nextIds = active
+                ? selectedGaraaGroupIds.filter((id) => id !== g.groupId)
+                : [...selectedGaraaGroupIds, g.groupId];
+              return (
+                <Link
+                  key={g.groupId}
+                  href={garaaGroupsHref(nextIds)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium ${
+                    active
+                      ? "bg-gradient-to-r from-fuchsia-600 to-violet-500 text-white shadow-sm"
+                      : "border border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  {g.groupName}
+                  {g.count === 0 ? " (мэдээлэл алга)" : ""}
+                </Link>
+              );
+            })}
           </div>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                  <th className="py-2 pr-3">Бүлэг</th>
-                  <th className="px-2 py-2 text-center">Хичээлийн жил</th>
-                  {domainList.map((d) => (
-                    <th key={d.id} className="px-2 py-2 text-center">
-                      {d.name}
-                    </th>
-                  ))}
-                  <th className="px-2 py-2 text-center">Нийт</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupGaraaComparison.map((g) => (
-                  <tr key={g.groupId} className="border-b border-slate-100">
-                    <td className="py-2 pr-3 font-medium text-slate-800">{g.groupName}</td>
-                    <td className="px-2 py-2 text-center text-slate-500">{g.schoolYear ?? "—"}</td>
-                    {domainList.map((d) => (
-                      <td key={d.id} className="px-2 py-2 text-center">
-                        {g.domainPct[d.name] ?? 0}%
-                      </td>
+
+          {groupGaraaComparison.length === 0 ? (
+            <p className="mt-4 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+              Харьцуулах бүлгээ сонгоно уу.
+            </p>
+          ) : (
+            <>
+              {groupGaraaWithData.length > 0 ? (
+                <div className="mt-4">
+                  <GroupCategoryComparisonBar data={groupGaraaChartData} groupKeys={groupGaraaChartKeys} />
+                </div>
+              ) : (
+                <p className="mt-4 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+                  Сонгосон бүлгүүдэд Гарааны (эхлэлийн) үе шатны ажиглалт бүртгэгдээгүй байна.
+                </p>
+              )}
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[720px] border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                      <th className="py-2 pr-3">Бүлэг</th>
+                      <th className="px-2 py-2 text-center">Хичээлийн жил</th>
+                      {domainList.map((d) => (
+                        <th key={d.id} className="px-2 py-2 text-center">
+                          {d.name}
+                        </th>
+                      ))}
+                      <th className="px-2 py-2 text-center">Нийт</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {groupGaraaComparison.map((g) => (
+                      <tr key={g.groupId} className="border-b border-slate-100">
+                        <td className="py-2 pr-3 font-medium text-slate-800">{g.groupName}</td>
+                        <td className="px-2 py-2 text-center text-slate-500">{g.schoolYear ?? "—"}</td>
+                        {domainList.map((d) => (
+                          <td key={d.id} className="px-2 py-2 text-center">
+                            {g.count > 0 ? `${g.domainPct[d.name] ?? 0}%` : "—"}
+                          </td>
+                        ))}
+                        <td className="px-2 py-2 text-center font-semibold">
+                          {g.count > 0 ? `${g.overallPct}%` : "—"}
+                        </td>
+                      </tr>
                     ))}
-                    <td className="px-2 py-2 text-center font-semibold">{g.overallPct}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  </tbody>
+                </table>
+                <p className="mt-2 text-xs text-slate-400">
+                  "—" тэмдэглэгээ нь тухайн бүлэгт Гарааны (эхлэлийн) үе шатны ажиглалт хараахан
+                  бүртгэгдээгүй байгааг илэрхийлнэ.
+                </p>
+              </div>
+            </>
+          )}
         </div>
       )}
 
