@@ -577,6 +577,19 @@ export default async function AnalysisPage({
                   <p className="mt-1 text-2xl font-semibold text-green-700">{readinessComparison.overallPctB}%</p>
                 </div>
               </div>
+              <p className="mt-3 text-center text-sm text-slate-600">
+                {readinessComparison.labelA}-с {readinessComparison.labelB} хүртэлх ахиц:{" "}
+                <span
+                  className={
+                    readinessComparison.overallPctB - readinessComparison.overallPctA >= 0
+                      ? "font-semibold text-emerald-600"
+                      : "font-semibold text-rose-600"
+                  }
+                >
+                  {readinessComparison.overallPctB - readinessComparison.overallPctA >= 0 ? "+" : ""}
+                  {readinessComparison.overallPctB - readinessComparison.overallPctA} нэгж
+                </span>
+              </p>
               <ReadinessYearComparisonBar
                 data={readinessComparison.categoryData}
                 keys={[readinessComparison.labelA, readinessComparison.labelB]}
