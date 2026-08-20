@@ -522,7 +522,8 @@ export default async function AnalysisPage({
           <div>
             <h2 className="text-sm font-semibold text-slate-800">Үр дүнгийн үнэлгээ — оноор харьцуулах</h2>
             <p className="text-xs text-slate-500">
-              Мэдлэг, Чадвар, Төлөвшлийн ангилал тус бүрээр жил хоорондын эзэмшилтийн хувийг харьцуулна.
+              Мэдлэг, Чадвар, Төлөвшлийн ангилал тус бүрээр сонгосон он бүрийн эцэс хүртэл хуримтлагдсан
+              эзэмшилтийн хувийг харьцуулна.
             </p>
           </div>
           {readinessYears.length >= 2 && (
@@ -568,11 +569,11 @@ export default async function AnalysisPage({
             <>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-slate-50 p-3 text-center">
-                  <p className="text-xs text-slate-500">{readinessComparison.labelA} — нийт эзэмшилт</p>
+                  <p className="text-xs text-slate-500">{readinessComparison.labelA} хүртэл хуримтлагдсан эзэмшилт</p>
                   <p className="mt-1 text-2xl font-semibold text-slate-800">{readinessComparison.overallPctA}%</p>
                 </div>
                 <div className="rounded-lg bg-green-50 p-3 text-center">
-                  <p className="text-xs text-slate-500">{readinessComparison.labelB} — нийт эзэмшилт</p>
+                  <p className="text-xs text-slate-500">{readinessComparison.labelB} хүртэл хуримтлагдсан эзэмшилт</p>
                   <p className="mt-1 text-2xl font-semibold text-green-700">{readinessComparison.overallPctB}%</p>
                 </div>
               </div>

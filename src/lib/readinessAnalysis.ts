@@ -46,11 +46,15 @@ export function compareReadinessByYear(
   const criterionById = new Map(criteria.map((c) => [c.id, c]));
   const childIds = new Set(children.map((c) => c.id));
 
-  function achievedForYear(year: string) {
+  // "Эзэмшилт" гэдэг тухайн оны эцэс хүртэл хуримтлагдсан дүнг илэрхийлэх учиртай тул
+  // checked_on яг тэр жилтэй тэнцүү байхыг биш, тэр жил (түүнээс өмнө) хүртэл шалгагдсан
+  // бүхнийг тоолно. Зөвхөн тухайн жилд шинээр тэмдэглэгдсэнийг тоолвол өмнөх жилүүдэд аль
+  // хэдийн эзэмшсэн ч дараа жил дахин "хөндөгдөөгүй" ангилалууд худал 0%-иар гарна.
+  function achievedByYear(year: string) {
     const byCategory: Record<string, number> = { Мэдлэг: 0, Чадвар: 0, Төлөвшил: 0 };
     let overall = 0;
     for (const chk of checks) {
-      if (chk.checked_on.slice(0, 4) !== year) continue;
+      if (chk.checked_on.slice(0, 4) > year) continue;
       if (!childIds.has(chk.child_id)) continue;
       const crit = criterionById.get(chk.criterion_id);
       if (!crit) continue;
@@ -61,8 +65,8 @@ export function compareReadinessByYear(
   }
 
   const possible = possibleByCategory(children, criteria);
-  const a = achievedForYear(yearA);
-  const b = achievedForYear(yearB);
+  const a = achievedByYear(yearA);
+  const b = achievedByYear(yearB);
   const labelA = `${yearA} он`;
   const labelB = `${yearB} он`;
 
