@@ -103,6 +103,57 @@ export default async function OutcomeReportPage({
     .filter((c) => c.total > 0)
     .sort((a, b) => b.withConclusion / b.total - a.withConclusion / a.total)[0];
 
+  // Явцын ажиглалтын тэмдэглэл (observations.outcome_id) тухайн СҮД-д дор хаяж 1 удаа
+  // хийгдсэн эсэхийг түвшин + чиглэл тус бүрээр харуулна — outcome_conclusions-ийн AI босго
+  // (CONCLUSION_THRESHOLD) хүрэхээс өмнө ч аль хэдийн бичигдсэн тэмдэглэлийн хамрагдалтыг
+  // харуулах учир дээрх coverageByDomain-аас өөр, илүү өргөн хамрах хувь гарна.
+  let noteObs: { child_id: string; outcome_id: string | null }[] = [];
+  if (childIds.length > 0) {
+    const { data } = await supabase
+      .from("observations")
+      .select("child_id, outcome_id")
+      .in("child_id", childIds)
+      .not("outcome_id", "is", null)
+      .or("stage.eq.yavts,stage.is.null");
+    noteObs = data ?? [];
+  }
+  const outcomeById = new Map(outcomes.map((o) => [o.id, o]));
+  const childById = new Map(children.map((c) => [c.id, c]));
+  const notedSet = new Set<string>(); // `${level}|${outcomeId}`
+  for (const r of noteObs) {
+    if (!r.outcome_id) continue;
+    const child = childById.get(r.child_id);
+    const childLevel = child?.groups?.level ?? null;
+    if (!childLevel) continue;
+    const outcome = outcomeById.get(r.outcome_id);
+    if (!outcome || (outcome.level && outcome.level !== childLevel)) continue;
+    notedSet.add(`${childLevel}|${r.outcome_id}`);
+  }
+
+  const levelsInScope = Array.from(
+    new Set(children.map((c) => c.groups?.level).filter((l): l is number => !!l))
+  ).sort((a, b) => a - b);
+
+  const noteCoverageByLevel = levelsInScope.map((level) => {
+    const domainStats = domainList
+      .map((d) => {
+        const levelOutcomes = outcomes.filter((o) => o.domain_id === d.id && o.level === level);
+        const total = levelOutcomes.length;
+        const covered = levelOutcomes.filter((o) => notedSet.has(`${level}|${o.id}`)).length;
+        return { domain: d.name, total, covered, pct: total > 0 ? Math.round((covered / total) * 100) : 0 };
+      })
+      .filter((d) => d.total > 0);
+    const totalOutcomesForLevel = outcomes.filter((o) => o.level === level).length;
+    const coveredForLevel = domainStats.reduce((sum, d) => sum + d.covered, 0);
+    return {
+      level,
+      domainStats,
+      totalOutcomesForLevel,
+      coveredForLevel,
+      pct: totalOutcomesForLevel > 0 ? Math.round((coveredForLevel / totalOutcomesForLevel) * 100) : 0,
+    };
+  });
+
   const selectedChild = sp.child ? children.find((c) => c.id === sp.child) : null;
   const selectedDomain = sp.domain ? domainList.find((d) => d.id === sp.domain) : null;
 
@@ -289,6 +340,58 @@ export default async function OutcomeReportPage({
             );
           })}
         </div>
+
+        {noteCoverageByLevel.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-base font-semibold text-slate-900">
+              Явцын ажиглалтын тэмдэглэлийн хамрагдалт — түвшин, чиглэлээр
+            </h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Тухайн түвшний нийт СҮД-ээс хэдэд нь дор хаяж 1 удаа явцын ажиглалтын тэмдэглэл
+              бичигдсэнийг харуулна (AI дүгнэлтийн {CONCLUSION_THRESHOLD}+ босгыг хүлээхгүйгээр).
+            </p>
+            <div className="mt-4 space-y-6">
+              {noteCoverageByLevel.map((lvl) => (
+                <div key={lvl.level} className="rounded-xl border border-slate-200 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="text-sm font-semibold text-slate-800">{lvl.level}-р түвшин</h4>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                      {lvl.coveredForLevel}/{lvl.totalOutcomesForLevel} СҮД · {lvl.pct}%
+                    </span>
+                  </div>
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full min-w-[420px] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                          <th className="py-2 pr-3">Чиглэл</th>
+                          <th className="px-2 py-2 text-center">Тэмдэглэл хийгдсэн СҮД</th>
+                          <th className="px-2 py-2 text-center">Нийт СҮД</th>
+                          <th className="px-2 py-2 text-center">Хувь</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lvl.domainStats.map((d, i) => (
+                          <tr key={d.domain} className="border-b border-slate-100">
+                            <td className="py-2 pr-3 font-medium text-slate-700">{d.domain}</td>
+                            <td className="px-2 py-2 text-center text-slate-600">{d.covered}</td>
+                            <td className="px-2 py-2 text-center text-slate-600">{d.total}</td>
+                            <td className="px-2 py-2 text-center">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-semibold ${domainColor(i).bg} ${domainColor(i).text}`}
+                              >
+                                {d.pct}%
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {sp.group && (
           <div className="no-print mt-8 rounded-xl border border-slate-200 p-4">
