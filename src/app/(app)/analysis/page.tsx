@@ -317,14 +317,14 @@ export default async function AnalysisPage({
         <div className="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <h3 className="text-sm font-semibold text-slate-800">
-              {year} оны чиглэл тус бүрийн дундаж түвшин (Явцын үнэлгээ)
+              Суралцахуйн чиглэл тус бүрийн хөгжлийн дундаж түвшин ({year} он, Явцын үнэлгээ)
             </h3>
             <DomainRadar data={radarData} />
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <h3 className="text-sm font-semibold text-slate-800">
-              {year} оны сар бүрийн хандлага (Явцын үнэлгээ)
+              Хөгжлийн түвшний сар тутмын хандлага ({year} он, Явцын үнэлгээ)
             </h3>
             <MonthlyTrend data={trendData} domainNames={domainNames} />
           </div>
