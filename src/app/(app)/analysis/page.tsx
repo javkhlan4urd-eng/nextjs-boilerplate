@@ -10,11 +10,20 @@ import {
 import {
   availableReadinessYears,
   compareReadinessByYear,
+  compareReadinessByGroup,
+  READINESS_CATEGORIES,
   type CriterionMeta,
   type ChildLevelMeta,
+  type GroupChildMeta,
 } from "@/lib/readinessAnalysis";
 import { fetchAllAchievedChecks } from "@/lib/readiness";
-import { DomainRadar, MonthlyTrend, PeriodComparisonBar, ReadinessYearComparisonBar } from "@/components/AnalysisCharts";
+import {
+  DomainRadar,
+  MonthlyTrend,
+  PeriodComparisonBar,
+  ReadinessYearComparisonBar,
+  GroupCategoryComparisonBar,
+} from "@/components/AnalysisCharts";
 import { formatChildName } from "@/lib/childName";
 
 export default async function AnalysisPage({
@@ -132,6 +141,31 @@ export default async function AnalysisPage({
     periodA && periodB ? comparePeriods(rows, domainList, granularity, periodA, periodB) : [];
 
   const years = Array.from({ length: 4 }, (_, i) => currentYear - 2 + i);
+
+  // Бүх бүлгийг (хуудасны Бүлэг/Хүүхэд шүүлтээс үл хамааран) харьцуулахын тулд тусад нь бүх
+  // хүүхдийг татна — учир нь дээрх scopedChildIds аль хэдийн сонгосон бүлгээр шүүгдсэн байдаг.
+  const { data: allChildrenRaw } = await supabase
+    .from("children")
+    .select("id, group_id, groups!inner(teacher_id, name, school_year, level)")
+    .eq("groups.teacher_id", user!.id);
+  const allChildrenForGroupCompare: GroupChildMeta[] = (allChildrenRaw ?? []).map((c) => {
+    const g = (c as unknown as { groups: { name: string; school_year: string | null; level: number | null } }).groups;
+    return { id: c.id, level: g?.level ?? null, groupId: c.group_id, groupName: g?.name ?? "", schoolYear: g?.school_year ?? null };
+  });
+  const allChecksForGroupCompare = await fetchAllAchievedChecks(
+    supabase,
+    allChildrenForGroupCompare.map((c) => c.id)
+  );
+  const groupReadinessComparison = compareReadinessByGroup(allChecksForGroupCompare, criteria, allChildrenForGroupCompare);
+  const groupCategoryChartData = READINESS_CATEGORIES.map((cat) => {
+    const row: Record<string, number | string> = { category: cat };
+    for (const g of groupReadinessComparison) {
+      const label = `${g.groupName}${g.schoolYear ? ` (${g.schoolYear})` : ""}`;
+      row[label] = g.categoryPct[cat];
+    }
+    return row;
+  });
+  const groupChartKeys = groupReadinessComparison.map((g) => `${g.groupName}${g.schoolYear ? ` (${g.schoolYear})` : ""}`);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -252,6 +286,49 @@ export default async function AnalysisPage({
                 ажиглалт хэрэгтэй.
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {groupReadinessComparison.length > 0 && (
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-800">
+            Бүлгүүдийн үр дүнгийн үнэлгээ — ангиллаар харьцуулах
+          </h2>
+          <p className="text-xs text-slate-500">
+            Бүх бүлгийн (өөрийн хичээлийн жилтэй нь хамт) Мэдлэг, Чадвар, Төлөвшлийн эзэмшилтийн хувийг зэрэгцүүлж
+            харьцуулна.
+          </p>
+          <div className="mt-4">
+            <GroupCategoryComparisonBar data={groupCategoryChartData} groupKeys={groupChartKeys} />
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                  <th className="py-2 pr-3">Бүлэг</th>
+                  <th className="px-2 py-2 text-center">Хичээлийн жил</th>
+                  <th className="px-2 py-2 text-center">Мэдлэг</th>
+                  <th className="px-2 py-2 text-center">Чадвар</th>
+                  <th className="px-2 py-2 text-center">Төлөвшил</th>
+                  <th className="px-2 py-2 text-center">Нийт</th>
+                  <th className="px-2 py-2 text-center">Хүүхэд</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupReadinessComparison.map((g) => (
+                  <tr key={g.groupId} className="border-b border-slate-100">
+                    <td className="py-2 pr-3 font-medium text-slate-800">{g.groupName}</td>
+                    <td className="px-2 py-2 text-center text-slate-500">{g.schoolYear ?? "—"}</td>
+                    <td className="px-2 py-2 text-center">{g.categoryPct["Мэдлэг"]}%</td>
+                    <td className="px-2 py-2 text-center">{g.categoryPct["Чадвар"]}%</td>
+                    <td className="px-2 py-2 text-center">{g.categoryPct["Төлөвшил"]}%</td>
+                    <td className="px-2 py-2 text-center font-semibold">{g.overallPct}%</td>
+                    <td className="px-2 py-2 text-center text-slate-500">{g.childCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

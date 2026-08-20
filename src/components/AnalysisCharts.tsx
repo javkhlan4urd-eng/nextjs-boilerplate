@@ -110,6 +110,31 @@ export function PeriodComparisonBar({
   );
 }
 
+const GROUP_COLORS = ["#4f46e5", "#0891b2", "#16a34a", "#ca8a04", "#dc2626", "#9333ea"];
+
+export function GroupCategoryComparisonBar({
+  data,
+  groupKeys,
+}: {
+  data: Record<string, number | string>[];
+  groupKeys: string[];
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={320}>
+      <BarChart data={data} margin={{ left: 0, right: 16 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="category" tick={{ fontSize: 11 }} />
+        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+        <Tooltip formatter={(v) => `${v}%`} />
+        <Legend wrapperStyle={{ fontSize: 11 }} />
+        {groupKeys.map((key, i) => (
+          <Bar key={key} dataKey={key} fill={GROUP_COLORS[i % GROUP_COLORS.length]} radius={[4, 4, 0, 0]} />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 export function ReadinessYearComparisonBar({
   data,
   keys,

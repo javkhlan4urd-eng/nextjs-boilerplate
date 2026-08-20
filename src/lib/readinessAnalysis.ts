@@ -77,3 +77,66 @@ export function compareReadinessByYear(
 
   return { categoryData, labelA, labelB, overallPctA, overallPctB };
 }
+
+export interface GroupChildMeta {
+  id: string;
+  level: number | null;
+  groupId: string;
+  groupName: string;
+  schoolYear: string | null;
+}
+
+export interface GroupReadinessStat {
+  groupId: string;
+  groupName: string;
+  schoolYear: string | null;
+  categoryPct: Record<ReadinessCategory, number>;
+  overallPct: number;
+  childCount: number;
+}
+
+// Бүх бүлгийг тус тусад нь (сургалтын чиглэл/ангилал тус бүрээр) харьцуулах — бүлэг бүр өөрийн
+// хичээлийн жилийг агуулдаг тул энэ нэг харьцуулалт бүлэг ба хичээлийн жил хоёрыг зэрэг харуулна.
+export function compareReadinessByGroup(
+  checks: ReadinessCheckRow[],
+  criteria: CriterionMeta[],
+  children: GroupChildMeta[]
+): GroupReadinessStat[] {
+  const achievedSet = new Set(checks.map((c) => `${c.child_id}|${c.criterion_id}`));
+
+  const groups = new Map<string, { groupName: string; schoolYear: string | null; children: GroupChildMeta[] }>();
+  for (const c of children) {
+    const g = groups.get(c.groupId) ?? { groupName: c.groupName, schoolYear: c.schoolYear, children: [] };
+    g.children.push(c);
+    groups.set(c.groupId, g);
+  }
+
+  return Array.from(groups.entries())
+    .map(([groupId, g]) => {
+      const categoryPct = {} as Record<ReadinessCategory, number>;
+      let overallAchieved = 0;
+      let overallTotal = 0;
+      for (const cat of READINESS_CATEGORIES) {
+        let achieved = 0;
+        let total = 0;
+        for (const child of g.children) {
+          if (!child.level) continue;
+          const items = criteria.filter((c) => c.level === child.level && c.category === cat);
+          total += items.length;
+          achieved += items.filter((c) => achievedSet.has(`${child.id}|${c.id}`)).length;
+        }
+        categoryPct[cat] = total > 0 ? Math.round((achieved / total) * 100) : 0;
+        overallAchieved += achieved;
+        overallTotal += total;
+      }
+      return {
+        groupId,
+        groupName: g.groupName,
+        schoolYear: g.schoolYear,
+        categoryPct,
+        overallPct: overallTotal > 0 ? Math.round((overallAchieved / overallTotal) * 100) : 0,
+        childCount: g.children.length,
+      };
+    })
+    .sort((a, b) => (a.schoolYear ?? "").localeCompare(b.schoolYear ?? "") || a.groupName.localeCompare(b.groupName));
+}
