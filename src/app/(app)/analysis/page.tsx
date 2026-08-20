@@ -5,7 +5,9 @@ import {
   availablePeriods,
   comparePeriods,
   periodLabel,
+  compareGaraaByGroup,
   type ObsRow,
+  type GroupObsRow,
 } from "@/lib/analysis";
 import {
   availableReadinessYears,
@@ -167,6 +169,41 @@ export default async function AnalysisPage({
   });
   const groupChartKeys = groupReadinessComparison.map((g) => `${g.groupName}${g.schoolYear ? ` (${g.schoolYear})` : ""}`);
 
+  // Гарааны үнэлгээ (stage="garaa") — мөн бүх бүлгийг (шүүлтээс үл хамааран) суралцахуйн
+  // чиглэл тус бүрээр харьцуулна.
+  const { data: allGaraaRaw } = await supabase
+    .from("observations")
+    .select(
+      "domain_id, level, observed_on, children!inner(group_id, groups!inner(teacher_id, name, school_year))"
+    )
+    .eq("children.groups.teacher_id", user!.id)
+    .eq("stage", "garaa")
+    .not("level", "is", null);
+  const allGaraaRows: GroupObsRow[] = (allGaraaRaw ?? [])
+    .filter((r): r is typeof r & { level: number } => r.level !== null)
+    .map((r) => {
+      const c = (
+        r as unknown as { children: { group_id: string; groups: { name: string; school_year: string | null } } }
+      ).children;
+      return {
+        domain_id: r.domain_id,
+        level: r.level,
+        observed_on: r.observed_on,
+        groupId: c.group_id,
+        groupName: c.groups?.name ?? "",
+        schoolYear: c.groups?.school_year ?? null,
+      };
+    });
+  const groupGaraaComparison = compareGaraaByGroup(allGaraaRows, domainList);
+  const groupGaraaChartData = domainList.map((d) => {
+    const row: Record<string, number | string> = { category: d.name };
+    for (const g of groupGaraaComparison) {
+      row[`${g.groupName}${g.schoolYear ? ` (${g.schoolYear})` : ""}`] = g.domainPct[d.name] ?? 0;
+    }
+    return row;
+  });
+  const groupGaraaChartKeys = groupGaraaComparison.map((g) => `${g.groupName}${g.schoolYear ? ` (${g.schoolYear})` : ""}`);
+
   return (
     <div className="mx-auto max-w-5xl">
       <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-fuchsia-600 via-purple-500 to-violet-500 p-6 text-white shadow-lg shadow-purple-200/60 sm:p-7">
@@ -286,6 +323,51 @@ export default async function AnalysisPage({
                 ажиглалт хэрэгтэй.
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {groupGaraaComparison.length > 0 && (
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-800">
+            Бүлгүүдийн Гарааны үнэлгээ — чиглэлээр харьцуулах
+          </h2>
+          <p className="text-xs text-slate-500">
+            Дунд, Ахлах, Бэлтгэл зэрэг бүх бүлгийн (өөрийн хичээлийн жилтэй нь хамт) Гарааны үнэлгээг
+            суралцахуйн 7 чиглэл тус бүрээр зэрэгцүүлж харьцуулна.
+          </p>
+          <div className="mt-4">
+            <GroupCategoryComparisonBar data={groupGaraaChartData} groupKeys={groupGaraaChartKeys} />
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[720px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                  <th className="py-2 pr-3">Бүлэг</th>
+                  <th className="px-2 py-2 text-center">Хичээлийн жил</th>
+                  {domainList.map((d) => (
+                    <th key={d.id} className="px-2 py-2 text-center">
+                      {d.name}
+                    </th>
+                  ))}
+                  <th className="px-2 py-2 text-center">Нийт</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupGaraaComparison.map((g) => (
+                  <tr key={g.groupId} className="border-b border-slate-100">
+                    <td className="py-2 pr-3 font-medium text-slate-800">{g.groupName}</td>
+                    <td className="px-2 py-2 text-center text-slate-500">{g.schoolYear ?? "—"}</td>
+                    {domainList.map((d) => (
+                      <td key={d.id} className="px-2 py-2 text-center">
+                        {g.domainPct[d.name] ?? 0}%
+                      </td>
+                    ))}
+                    <td className="px-2 py-2 text-center font-semibold">{g.overallPct}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

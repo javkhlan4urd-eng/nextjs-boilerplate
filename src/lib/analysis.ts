@@ -42,6 +42,56 @@ export function avgByDomain(rows: ObsRow[], domains: DomainMeta[]) {
   });
 }
 
+export interface GroupObsRow extends ObsRow {
+  groupId: string;
+  groupName: string;
+  schoolYear: string | null;
+}
+
+export interface GroupDomainStat {
+  groupId: string;
+  groupName: string;
+  schoolYear: string | null;
+  domainPct: Record<string, number>;
+  overallPct: number;
+  count: number;
+}
+
+// Бүх бүлгийг (Гарааны үнэлгээ) суралцахуйн чиглэл тус бүрээр харьцуулах — бүлэг бүр өөрийн
+// хичээлийн жилийг агуулдаг тул нэг харьцуулалт дотор бүлэг ба хичээлийн жил хоёуланг харуулна.
+export function compareGaraaByGroup(rows: GroupObsRow[], domains: DomainMeta[]): GroupDomainStat[] {
+  const groups = new Map<string, { groupName: string; schoolYear: string | null; rows: GroupObsRow[] }>();
+  for (const r of rows) {
+    const g = groups.get(r.groupId) ?? { groupName: r.groupName, schoolYear: r.schoolYear, rows: [] };
+    g.rows.push(r);
+    groups.set(r.groupId, g);
+  }
+
+  return Array.from(groups.entries())
+    .map(([groupId, g]) => {
+      const avg = avgByDomain(g.rows, domains);
+      const domainPct: Record<string, number> = {};
+      let sumPct = 0;
+      let scoredDomains = 0;
+      for (const a of avg) {
+        domainPct[a.domain] = a.count > 0 ? Math.round((a.avg / 4) * 100) : 0;
+        if (a.count > 0) {
+          sumPct += domainPct[a.domain];
+          scoredDomains += 1;
+        }
+      }
+      return {
+        groupId,
+        groupName: g.groupName,
+        schoolYear: g.schoolYear,
+        domainPct,
+        overallPct: scoredDomains > 0 ? Math.round(sumPct / scoredDomains) : 0,
+        count: g.rows.length,
+      };
+    })
+    .sort((a, b) => (a.schoolYear ?? "").localeCompare(b.schoolYear ?? "") || a.groupName.localeCompare(b.groupName));
+}
+
 export function monthlyTrend(rows: ObsRow[], domains: DomainMeta[], year: number) {
   const buckets = new Map<string, { sum: number; count: number }>(); // key = "M-domainId"
   const overallBuckets = new Map<number, { sum: number; count: number }>();
