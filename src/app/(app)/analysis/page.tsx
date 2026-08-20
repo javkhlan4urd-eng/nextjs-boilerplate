@@ -113,10 +113,7 @@ export default async function AnalysisPage({
   const yearRows = rows.filter((r) => new Date(r.observed_on).getFullYear() === year);
 
   const domainList = domains ?? [];
-  const radarData = avgByDomain(yearRows, domainList).map((d) => ({
-    domain: d.domain,
-    avg: Math.round((d.avg / 4) * 100),
-  }));
+  const radarData = avgByDomain(yearRows, domainList);
   const trendData = monthlyTrend(rows, domainList, year);
   const domainNames = domainList.map((d) => d.name);
 

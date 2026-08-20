@@ -34,7 +34,7 @@ export function DomainRadar({ data }: { data: { domain: string; avg: number }[] 
       <RadarChart data={data} outerRadius="75%">
         <PolarGrid />
         <PolarAngleAxis dataKey="domain" tick={{ fontSize: 11 }} />
-        <PolarRadiusAxis domain={[0, 100]} tickCount={5} tickFormatter={(v) => `${v}%`} />
+        <PolarRadiusAxis domain={[0, 4]} tickCount={5} />
         <Radar
           name="Дундаж түвшин"
           dataKey="avg"
@@ -42,7 +42,7 @@ export function DomainRadar({ data }: { data: { domain: string; avg: number }[] 
           fill="#4f46e5"
           fillOpacity={0.4}
         />
-        <Tooltip formatter={(v) => `${v}%`} />
+        <Tooltip />
       </RadarChart>
     </ResponsiveContainer>
   );
