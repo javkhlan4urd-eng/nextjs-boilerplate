@@ -116,10 +116,10 @@ export function monthlyTrend(rows: ObsRow[], domains: DomainMeta[], year: number
     const point: Record<string, number | string> = { month: MONTH_LABELS[month] };
     for (const d of domains) {
       const b = buckets.get(`${month}-${d.id}`);
-      point[d.name] = b ? Number((b.sum / b.count).toFixed(2)) : (null as unknown as number);
+      point[d.name] = b ? Math.round(((b.sum / b.count) / 4) * 100) : (null as unknown as number);
     }
     const overall = overallBuckets.get(month);
-    point["Ерөнхий дундаж"] = overall ? Number((overall.sum / overall.count).toFixed(2)) : (null as unknown as number);
+    point["Ерөнхий дундаж"] = overall ? Math.round(((overall.sum / overall.count) / 4) * 100) : (null as unknown as number);
     return point;
   });
 }

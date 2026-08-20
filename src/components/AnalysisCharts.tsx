@@ -60,8 +60,8 @@ export function MonthlyTrend({
       <LineChart data={data} margin={{ left: 0, right: 16 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-        <YAxis domain={[0, 4]} tick={{ fontSize: 11 }} />
-        <Tooltip />
+        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+        <Tooltip formatter={(v) => `${v}%`} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <Line
           type="monotone"
