@@ -113,7 +113,10 @@ export default async function AnalysisPage({
   const yearRows = rows.filter((r) => new Date(r.observed_on).getFullYear() === year);
 
   const domainList = domains ?? [];
-  const radarData = avgByDomain(yearRows, domainList);
+  const radarData = avgByDomain(yearRows, domainList).map((d) => ({
+    domain: d.domain,
+    avg: Math.round((d.avg / 4) * 100),
+  }));
   const trendData = monthlyTrend(rows, domainList, year);
   const domainNames = domainList.map((d) => d.name);
 
@@ -147,7 +150,16 @@ export default async function AnalysisPage({
       ? compareReadinessByYear(readinessChecks, criteria, readinessChildren, readinessYearA, readinessYearB)
       : null;
   const comparisonData =
-    periodA && periodB ? comparePeriods(rows, domainList, granularity, periodA, periodB) : [];
+    periodA && periodB
+      ? comparePeriods(rows, domainList, granularity, periodA, periodB).map((row) => {
+          const converted: Record<string, number | string> = { domain: row.domain };
+          for (const [key, value] of Object.entries(row)) {
+            if (key === "domain") continue;
+            converted[key] = typeof value === "number" ? Math.round((value / 4) * 100) : value;
+          }
+          return converted;
+        })
+      : [];
 
   const years = Array.from({ length: 4 }, (_, i) => currentYear - 2 + i);
 

@@ -34,7 +34,7 @@ export function DomainRadar({ data }: { data: { domain: string; avg: number }[] 
       <RadarChart data={data} outerRadius="75%">
         <PolarGrid />
         <PolarAngleAxis dataKey="domain" tick={{ fontSize: 11 }} />
-        <PolarRadiusAxis domain={[0, 4]} tickCount={5} />
+        <PolarRadiusAxis domain={[0, 100]} tickCount={5} tickFormatter={(v) => `${v}%`} />
         <Radar
           name="Дундаж түвшин"
           dataKey="avg"
@@ -42,7 +42,7 @@ export function DomainRadar({ data }: { data: { domain: string; avg: number }[] 
           fill="#4f46e5"
           fillOpacity={0.4}
         />
-        <Tooltip />
+        <Tooltip formatter={(v) => `${v}%`} />
       </RadarChart>
     </ResponsiveContainer>
   );
@@ -100,8 +100,8 @@ export function PeriodComparisonBar({
       <BarChart data={data} margin={{ left: 0, right: 16 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
         <XAxis dataKey="domain" tick={{ fontSize: 10 }} interval={0} angle={-15} textAnchor="end" height={60} />
-        <YAxis domain={[0, 4]} tick={{ fontSize: 11 }} />
-        <Tooltip />
+        <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} />
+        <Tooltip formatter={(v) => `${v}%`} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
         <Bar dataKey={keys[0]} fill="#94a3b8" radius={[4, 4, 0, 0]} />
         <Bar dataKey={keys[1]} fill="#4f46e5" radius={[4, 4, 0, 0]} />
