@@ -244,6 +244,27 @@ export default async function AnalysisPage({
   });
   const groupGaraaChartKeys = groupGaraaWithData.map((g) => `${g.groupName}${g.schoolYear ? ` (${g.schoolYear})` : ""}`);
 
+  // Гарааны (хичээлийн жилийн эхэнд тогтоосон) болон Үр дүнгийн (одоогийн эцсийн) үнэлгээ хоёр
+  // өөр аргачлалтай ч (7 чиглэл 1-4 түвшин / Мэдлэг-Чадвар-Төлөвшил шалгуур) хоёулаа 0-100%
+  // хэлбэрт шилжсэн тул бүлэг тус бүрийн эхлэл→эцсийн ерөнхий ахицыг харьцуулж болно.
+  const garaaVsResultStats = allGroupGaraaStats.map((g) => {
+    const result = groupReadinessComparison.find((r) => r.groupId === g.groupId);
+    return {
+      groupId: g.groupId,
+      groupName: g.groupName,
+      schoolYear: g.schoolYear,
+      garaaPct: g.count > 0 ? g.overallPct : null,
+      resultPct: result ? result.overallPct : null,
+    };
+  });
+  const garaaVsResultChartData = garaaVsResultStats
+    .filter((g) => g.garaaPct !== null || g.resultPct !== null)
+    .map((g) => ({
+      category: `${g.groupName}${g.schoolYear ? ` (${g.schoolYear})` : ""}`,
+      "Гарааны үнэлгээ": g.garaaPct ?? 0,
+      "Үр дүнгийн үнэлгээ": g.resultPct ?? 0,
+    }));
+
   return (
     <div className="mx-auto max-w-5xl">
       <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-fuchsia-600 via-purple-500 to-violet-500 p-6 text-white shadow-lg shadow-purple-200/60 sm:p-7">
@@ -513,6 +534,64 @@ export default async function AnalysisPage({
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {garaaVsResultStats.length > 0 && (
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-800">Гараа — Үр дүнгийн хоорондын ахиц</h2>
+          <p className="text-xs text-slate-500">
+            Хичээлийн жилийн эхний Гарааны үнэлгээнээс одоогийн Үр дүнгийн үнэлгээ хүртэл бүлэг тус бүрийн
+            ерөнхий ахицыг харуулна (хоёулаа 0-100% хэлбэрт шилжүүлсэн).
+          </p>
+          {garaaVsResultChartData.length > 0 && (
+            <div className="mt-4">
+              <ReadinessYearComparisonBar
+                data={garaaVsResultChartData}
+                keys={["Гарааны үнэлгээ", "Үр дүнгийн үнэлгээ"]}
+              />
+            </div>
+          )}
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[480px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
+                  <th className="py-2 pr-3">Бүлэг</th>
+                  <th className="px-2 py-2 text-center">Хичээлийн жил</th>
+                  <th className="px-2 py-2 text-center">Гараа</th>
+                  <th className="px-2 py-2 text-center">Үр дүн</th>
+                  <th className="px-2 py-2 text-center">Ахиц</th>
+                </tr>
+              </thead>
+              <tbody>
+                {garaaVsResultStats.map((g) => {
+                  const delta = g.garaaPct !== null && g.resultPct !== null ? g.resultPct - g.garaaPct : null;
+                  return (
+                    <tr key={g.groupId} className="border-b border-slate-100">
+                      <td className="py-2 pr-3 font-medium text-slate-800">{g.groupName}</td>
+                      <td className="px-2 py-2 text-center text-slate-500">{g.schoolYear ?? "—"}</td>
+                      <td className="px-2 py-2 text-center">{g.garaaPct !== null ? `${g.garaaPct}%` : "—"}</td>
+                      <td className="px-2 py-2 text-center">{g.resultPct !== null ? `${g.resultPct}%` : "—"}</td>
+                      <td className="px-2 py-2 text-center font-semibold">
+                        {delta !== null ? (
+                          <span className={delta >= 0 ? "text-emerald-600" : "text-rose-600"}>
+                            {delta >= 0 ? "+" : ""}
+                            {delta} нэгж
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-slate-400">
+              "—" тэмдэглэгээ нь тухайн бүлэгт Гараа эсвэл Үр дүнгийн үнэлгээ хараахан бүртгэгдээгүй
+              байгааг илэрхийлнэ; ийм тохиолдолд ахиц тооцоологдохгүй.
+            </p>
           </div>
         </div>
       )}
